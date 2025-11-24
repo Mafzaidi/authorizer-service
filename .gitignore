@@ -27,4 +27,3 @@ go.work.sum
 # Build directories
 bin/
 build/
-pkg/

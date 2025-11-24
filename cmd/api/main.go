@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"localdev.me/authorizer/config"
-	"localdev.me/authorizer/internal/infrastructure/database/postgres"
-	"localdev.me/authorizer/internal/server"
+	"localdev.me/authorizer/internal/app"
+	"localdev.me/authorizer/internal/infrastructure/persistence/postgres"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		panic(err)
 	}
 
-	s := server.NewServer(cfg, pool)
+	s := app.NewServer(cfg, pool)
 	if err := s.Run(); err != nil {
 		log.Fatalf("Server could not be ran: %v", err)
 	}

@@ -53,3 +53,12 @@ func GetUserFromContext(c echo.Context) *Claims {
 	}
 	return nil
 }
+
+func HasRole(required string, userRoles []string) bool {
+	for _, r := range userRoles {
+		if r == required {
+			return true
+		}
+	}
+	return false
+}
