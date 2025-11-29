@@ -11,88 +11,101 @@ import (
 	"localdev.me/authorizer/internal/domain/repository"
 )
 
-type permissionRepositoryPGX struct {
+type permRepositoryPGX struct {
 	pool *pgxpool.Pool
 }
 
-func NewPermissionRepositoryPGX(pool *pgxpool.Pool) repository.PermissionRepository {
-	return &permissionRepositoryPGX{
+func NewPermRepositoryPGX(pool *pgxpool.Pool) repository.PermRepository {
+	return &permRepositoryPGX{
 		pool: pool,
 	}
 }
 
-func (r *permissionRepositoryPGX) Create(perm *entity.Permission) error {
+func (r *permRepositoryPGX) Create(perm *entity.Permission) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
 		INSERT INTO authorizer_service.permissions 
-			(id, application _id, resource, action, slug, description, version, created_by)
+			(id, application_id, code, description, version, created_by)
 		VALUES 
-			($1, $2, $3, $4, $5, $6, $7, $8)
+			($1, $2, $3, $4, $5, $6)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		perm.ID, perm.ApplicationID, perm.Resource, perm.Action,
-		perm.Slug, perm.Description, perm.Version, perm.CreatedBy,
+		perm.ID, perm.ApplicationID, perm.Code, perm.Description, perm.Version, perm.CreatedBy,
 	)
 
 	return err
 }
 
-func (r *permissionRepositoryPGX) GetByID(id string) (*entity.Permission, error) {
+func (r *permRepositoryPGX) GetByID(id string) (*entity.Permission, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `SELECT * FROM authorizer_service.permissions WHERE id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, id)
-	return scanPermission(row)
+	return scanPerm(row)
 }
 
-func (r *permissionRepositoryPGX) GetBySlug(slug string) (*entity.Permission, error) {
+func (r *permRepositoryPGX) GetByCode(code string) (*entity.Permission, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := `SELECT * FROM authorizer_service.permissions WHERE slug = $1 AND deleted_at IS NULL`
+	query := `SELECT * FROM authorizer_service.permissions WHERE code = $1 AND deleted_at IS NULL`
 
-	row := r.pool.QueryRow(ctx, query, slug)
-	return scanPermission(row)
+	row := r.pool.QueryRow(ctx, query, code)
+	return scanPerm(row)
 }
 
-func (r *permissionRepositoryPGX) GetByApplication(appID string) (*entity.Permission, error) {
+func (r *permRepositoryPGX) GetByApp(appID string) (*entity.Permission, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `SELECT * FROM authorizer_service.permissions WHERE application_id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, appID)
-	return scanPermission(row)
+	return scanPerm(row)
 }
 
-func (r *permissionRepositoryPGX) Update(perm *entity.Permission) error {
+func (r *permRepositoryPGX) Update(perm *entity.Permission) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
 		UPDATE authorizer_service.permissions
-		SET application _id = $1,
-			resource = $2,
-			action = $3,
-			slug = $4,
-			description = $5,
-			version = $6,
-			created_by = $7,
+		SET application_id = $1,
+			code = $2,
+			description = $3,
+			version = $4,
+			created_by = $5,
 			updated_at = NOW()
-		WHERE id = $8 AND deleted_at IS NULL
+		WHERE id = $6 AND deleted_at IS NULL
 	`
 	_, err := r.pool.Exec(ctx,
-		query, perm.ApplicationID, perm.Resource, perm.Action,
-		perm.Slug, perm.Description, perm.Version, perm.CreatedBy,
+		query, perm.ApplicationID, perm.Code, perm.Description, perm.Version, perm.CreatedBy, perm.ID,
 	)
 	return err
 }
 
-func (r *permissionRepositoryPGX) Delete(id string) error {
+func (r *permRepositoryPGX) Upsert(perm *entity.Permission) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `
+		INSERT INTO authorizer_service.permissions (id, application_id, code, description, version)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (application_id, code)
+        DO UPDATE SET description = EXCLUDED.description,
+                    updated_at = NOW()
+	`
+	_, err := r.pool.Exec(ctx,
+		query, perm.ID, perm.ApplicationID, perm.Code, perm.Description, perm.Version,
+	)
+	return err
+}
+
+func (r *permRepositoryPGX) Delete(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -100,7 +113,7 @@ func (r *permissionRepositoryPGX) Delete(id string) error {
 	return err
 }
 
-func (r *permissionRepositoryPGX) List(limit, offset int) ([]*entity.Permission, error) {
+func (r *permRepositoryPGX) List(limit, offset int) ([]*entity.Permission, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -119,7 +132,7 @@ func (r *permissionRepositoryPGX) List(limit, offset int) ([]*entity.Permission,
 
 	var perms []*entity.Permission
 	for rows.Next() {
-		perm, err := scanPermission(rows)
+		perm, err := scanPerm(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -128,15 +141,13 @@ func (r *permissionRepositoryPGX) List(limit, offset int) ([]*entity.Permission,
 	return perms, rows.Err()
 }
 
-func scanPermission(row pgx.Row) (*entity.Permission, error) {
+func scanPerm(row pgx.Row) (*entity.Permission, error) {
 	var p entity.Permission
 
 	err := row.Scan(
 		&p.ID,
 		&p.ApplicationID,
-		&p.Resource,
-		&p.Action,
-		&p.Slug,
+		&p.Code,
 		&p.Description,
 		&p.Version,
 		&p.CreatedBy,

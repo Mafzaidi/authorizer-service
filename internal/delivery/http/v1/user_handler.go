@@ -152,7 +152,7 @@ func (h *UserHandler) UpdateUserProfile() echo.HandlerFunc {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		input := &user.UpddateInput{
+		input := &user.UpdateInput{
 			FullName: pl.FullName,
 			Phone:    pl.Phone,
 		}

@@ -27,12 +27,12 @@ func (r *roleRepositoryPGX) Create(role *entity.Role) error {
 
 	query := `
 		INSERT INTO authorizer_service.roles 
-			(id, name, description)
+			(id, application_id, code, name, description)
 		VALUES 
-			($1, $2, $3, $4)
+			($1, $2, $3, $4, $5)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		role.ID, role.Name, role.Description,
+		role.ID, role.ApplicationID, role.Code, role.Name, role.Description,
 	)
 
 	return err
@@ -44,14 +44,15 @@ func (r *roleRepositoryPGX) Update(role *entity.Role) error {
 
 	query := `
 		UPDATE authorizer_service.roles
-		SET name = $1,
-			description = $2,
-			application = $3,
+		SET application_id = $1,
+			code = $2,
+			name = $3,
+			description = $4,
 			updated_at = NOW()
-		WHERE id = $4 AND deleted_at IS NULL
+		WHERE id = $5 AND deleted_at IS NULL
 	`
 	_, err := r.pool.Exec(ctx,
-		query, role.Name, role.Description, role.ID,
+		query, role.ApplicationID, role.Code, role.Name, role.Description, role.ID,
 	)
 	return err
 }
@@ -74,13 +75,46 @@ func (r *roleRepositoryPGX) GetByID(id string) (*entity.Role, error) {
 	return scanRole(row)
 }
 
-func (r *roleRepositoryPGX) GetByName(name string) (*entity.Role, error) {
+func (r *roleRepositoryPGX) GetByCode(code string) (*entity.Role, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := `SELECT * FROM authorizer_service.roles WHERE name = $1`
+	query := `SELECT * FROM authorizer_service.roles WHERE code = $1`
 
-	row := r.pool.QueryRow(ctx, query, name)
+	row := r.pool.QueryRow(ctx, query, code)
+	return scanRole(row)
+}
+
+func (r *roleRepositoryPGX) GetByApp(appID string) ([]*entity.Role, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []*entity.Role
+	for rows.Next() {
+		role, err := scanRole(rows)
+		if err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, rows.Err()
+}
+
+func (r *roleRepositoryPGX) GetByAppAndCode(appID, code string) (*entity.Role, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1 AND code = $1`
+
+	row := r.pool.QueryRow(ctx, query, appID, code)
 	return scanRole(row)
 }
 
@@ -117,6 +151,8 @@ func scanRole(row pgx.Row) (*entity.Role, error) {
 
 	err := row.Scan(
 		&r.ID,
+		&r.ApplicationID,
+		&r.Code,
 		&r.Name,
 		&r.Description,
 		&r.CreatedAt,

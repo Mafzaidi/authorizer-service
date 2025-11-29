@@ -1,2 +1,2 @@
 # authorizer-service
-service for handlin application authorizing
+service for handling application authorizing

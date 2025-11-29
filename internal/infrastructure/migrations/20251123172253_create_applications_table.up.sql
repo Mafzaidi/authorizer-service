@@ -3,15 +3,16 @@ SET search_path TO authorizer_service;
 
 CREATE TABLE IF NOT EXISTS applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
+    description TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_applications_slug ON applications(slug);
+CREATE INDEX idx_applications_code ON applications(code);
 
 -- Update updated_at automatically
 CREATE OR REPLACE FUNCTION update_timestamp()

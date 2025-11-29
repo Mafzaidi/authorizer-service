@@ -27,3 +27,11 @@ func MapUserPrivateRoutes(g *echo.Group, h *v1.UserHandler) {
 func MapRolePrivateRoutes(g *echo.Group, h *v1.RoleHandler) {
 	g.POST("", h.Create())
 }
+
+func MapAppPrivateRoutes(g *echo.Group, h *v1.AppHandler) {
+	g.POST("", h.Create())
+}
+
+func MapPermPrivateRoutes(g *echo.Group, h *v1.PermHandler) {
+	g.POST("/sync", h.Sync())
+}

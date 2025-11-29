@@ -12,17 +12,17 @@ import (
 	"localdev.me/authorizer/internal/domain/repository"
 )
 
-type applicationRepositoryPGX struct {
+type appRepositoryPGX struct {
 	pool *pgxpool.Pool
 }
 
-func NewApplicationRepositoryPGX(pool *pgxpool.Pool) repository.ApplicationRepository {
-	return &applicationRepositoryPGX{
+func NewAppRepositoryPGX(pool *pgxpool.Pool) repository.AppRepository {
+	return &appRepositoryPGX{
 		pool: pool,
 	}
 }
 
-func (r *applicationRepositoryPGX) Create(app *entity.Application) error {
+func (r *appRepositoryPGX) Create(app *entity.Application) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -30,38 +30,38 @@ func (r *applicationRepositoryPGX) Create(app *entity.Application) error {
 
 	query := `
 		INSERT INTO authorizer_service.applications 
-			(id, slug, name, metadata)
+			(id, code, name, description, metadata)
 		VALUES 
-			($1, $2, $3, $4)
+			($1, $2, $3, $4, $5)
 	`
 	_, err := r.pool.Exec(ctx, query,
-		app.ID, app.Slug, app.Name, metadataJSON,
+		app.ID, app.Code, app.Name, app.Description, metadataJSON,
 	)
 
 	return err
 }
 
-func (r *applicationRepositoryPGX) GetByID(id string) (*entity.Application, error) {
+func (r *appRepositoryPGX) GetByID(id string) (*entity.Application, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `SELECT * FROM authorizer_service.applications WHERE id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, id)
-	return scanApplication(row)
+	return scanApp(row)
 }
 
-func (r *applicationRepositoryPGX) GetBySlug(slug string) (*entity.Application, error) {
+func (r *appRepositoryPGX) GetByCode(code string) (*entity.Application, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := `SELECT * FROM authorizer_service.applications WHERE slug = $1 AND deleted_at IS NULL`
+	query := `SELECT * FROM authorizer_service.applications WHERE code = $1 AND deleted_at IS NULL`
 
-	row := r.pool.QueryRow(ctx, query, slug)
-	return scanApplication(row)
+	row := r.pool.QueryRow(ctx, query, code)
+	return scanApp(row)
 }
 
-func (r *applicationRepositoryPGX) Update(app *entity.Application) error {
+func (r *appRepositoryPGX) Update(app *entity.Application) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -77,7 +77,7 @@ func (r *applicationRepositoryPGX) Update(app *entity.Application) error {
 	return err
 }
 
-func (r *applicationRepositoryPGX) Delete(id string) error {
+func (r *appRepositoryPGX) Delete(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -85,7 +85,7 @@ func (r *applicationRepositoryPGX) Delete(id string) error {
 	return err
 }
 
-func (r *applicationRepositoryPGX) List(limit, offset int) ([]*entity.Application, error) {
+func (r *appRepositoryPGX) List(limit, offset int) ([]*entity.Application, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -104,7 +104,7 @@ func (r *applicationRepositoryPGX) List(limit, offset int) ([]*entity.Applicatio
 
 	var apps []*entity.Application
 	for rows.Next() {
-		app, err := scanApplication(rows)
+		app, err := scanApp(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -113,14 +113,15 @@ func (r *applicationRepositoryPGX) List(limit, offset int) ([]*entity.Applicatio
 	return apps, rows.Err()
 }
 
-func scanApplication(row pgx.Row) (*entity.Application, error) {
+func scanApp(row pgx.Row) (*entity.Application, error) {
 	var a entity.Application
 	var metadataJSON []byte
 
 	err := row.Scan(
 		&a.ID,
-		&a.Slug,
+		&a.Code,
 		&a.Name,
+		&a.Description,
 		&metadataJSON,
 		&a.CreatedAt,
 		&a.UpdatedAt,

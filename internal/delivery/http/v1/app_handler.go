@@ -5,48 +5,46 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/internal/usecase/role"
+	app "localdev.me/authorizer/internal/usecase/application"
 	"localdev.me/authorizer/pkg/response"
 )
 
-type CreateRoleRequest struct {
-	AppID       string `json:"application_id"`
+type CreateAppRequest struct {
 	Code        string `json:"code" validate:"required"`
 	Name        string `json:"name" validate:"required"`
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description"`
 }
 
-type RoleHandler struct {
-	roleUC role.Usecase
+type AppHandler struct {
+	appUC app.Usecase
 }
 
-func NewRoleHandler(uc role.Usecase) *RoleHandler {
-	return &RoleHandler{
-		roleUC: uc,
+func NewAppHandler(uc app.Usecase) *AppHandler {
+	return &AppHandler{
+		appUC: uc,
 	}
 }
 
-func (h *RoleHandler) Create() echo.HandlerFunc {
+func (h *AppHandler) Create() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &CreateRoleRequest{}
+		pl := &CreateAppRequest{}
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		input := &role.CreateInput{
-			AppID:       pl.AppID,
+		input := &app.CreateInput{
 			Code:        pl.Code,
 			Name:        pl.Name,
 			Description: pl.Description,
 		}
 
-		if err := h.roleUC.Create(input); err != nil {
+		if err := h.appUC.Create(input); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
 		return response.SuccesHandler(c, &response.Response{
-			Message: "role created successfully",
+			Message: "application created successfully",
 		})
 	}
 }

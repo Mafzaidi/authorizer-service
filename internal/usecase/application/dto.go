@@ -1,11 +1,11 @@
-package role
+package application
 
 type (
 	CreateInput struct {
-		AppID       string
 		Code        string
 		Name        string
 		Description string
+		Metadata    map[string]interface{}
 	}
 
 	UpdateInput struct {

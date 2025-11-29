@@ -11,3 +11,12 @@ func NewUUIDv7() string {
 	}
 	return id.String()
 }
+
+func IsUUIDv7(id string) bool {
+	u, err := uuid.Parse(id)
+	if err != nil {
+		return false
+	}
+
+	return u.Version() == 7
+}

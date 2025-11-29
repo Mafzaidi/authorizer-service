@@ -9,7 +9,7 @@ type (
 		Password string
 	}
 
-	UpddateInput struct {
+	UpdateInput struct {
 		FullName string
 		Phone    string
 	}

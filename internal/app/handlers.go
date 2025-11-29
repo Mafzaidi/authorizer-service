@@ -20,8 +20,10 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 	auth := resource.NewAuth(s.postgreDB.Pool, s.cfg)
 	user := resource.NewUser(s.postgreDB.Pool)
 	role := resource.NewRole(s.postgreDB.Pool)
+	app := resource.NewApp(s.postgreDB.Pool)
+	perm := resource.NePerm(s.postgreDB.Pool)
 
-	v1 := e.Group("/api/v1")
+	v1 := e.Group("authorizer/v1")
 	public := v1.Group("")
 
 	pblAuth := public.Group("/auth")
@@ -36,10 +38,14 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 	pvtAuth := private.Group("/auth")
 	pvtUser := private.Group("/users")
 	pvtRole := private.Group("/roles")
+	pvtApp := private.Group("/applications")
+	pvtPerm := private.Group("/permissions")
 
 	MapAuthPrivateRoutes(pvtAuth, auth.Handler)
 	MapUserPrivateRoutes(pvtUser, user.Handler)
 	MapRolePrivateRoutes(pvtRole, role.Handler)
+	MapAppPrivateRoutes(pvtApp, app.Handler)
+	MapPermPrivateRoutes(pvtPerm, perm.Handler)
 
 	pblHealth.GET("", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]any{

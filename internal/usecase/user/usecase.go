@@ -69,7 +69,7 @@ func (u *userUsecase) GetDetail(id string) (*entity.User, error) {
 	return user, nil
 }
 
-func (u *userUsecase) UpdateData(id string, input *UpddateInput) error {
+func (u *userUsecase) UpdateData(id string, input *UpdateInput) error {
 	if id == "" {
 		return errors.New("userID is required")
 	}

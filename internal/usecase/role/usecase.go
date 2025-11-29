@@ -19,23 +19,29 @@ func NewRoleUsecase(repo repository.RoleRepository) Usecase {
 	}
 }
 
-func (u *roleUsecase) Create(name, description, application string) error {
+func (u *roleUsecase) Create(input *CreateInput) error {
 
-	if name == "" || description == "" {
-		return errors.New("role name and description is required")
+	if input.AppID == "" {
+		return errors.New("app ID is required")
 	}
 
-	existing, _ := u.repo.GetByName(name)
+	if input.Code == "" || input.Name == "" {
+		return errors.New("code and name is required")
+	}
+
+	existing, _ := u.repo.GetByAppAndCode(input.AppID, input.Code)
 	if existing != nil {
 		return errors.New("role already exists")
 	}
 
 	newRole := &entity.Role{
-		ID:          idgen.NewUUIDv7(),
-		Name:        name,
-		Description: description,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:            idgen.NewUUIDv7(),
+		ApplicationID: input.AppID,
+		Code:          input.Code,
+		Name:          input.Name,
+		Description:   input.Description,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	return u.repo.Create(newRole)
