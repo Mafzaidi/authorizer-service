@@ -11,23 +11,31 @@ import (
 
 type Auth struct {
 	UserRepository     repository.UserRepository
+	AppRepository      repository.AppRepository
 	UserRoleRepository repository.UserRoleRepository
 	RoleRepository     repository.RoleRepository
+	RolePermRepository repository.RolePermRepository
+	PermRepository     repository.PermRepository
 	Usecase            authUC.Usecase
 	Handler            *authHdl.AuthHandler
 }
 
 func NewAuth(db *pgxpool.Pool, cfg *config.Config) *Auth {
 	userRepo := authRepo.NewUserRepositoryPGX(db)
+	appRepo := authRepo.NewAppRepositoryPGX(db)
 	userRoleRepo := authRepo.NewUserRoleRepositoryPGX(db)
 	roleRepo := authRepo.NewRoleRepositoryPGX(db)
-	uc := authUC.NewAuthUseCase(userRepo, userRoleRepo, roleRepo)
+	rolePermRepo := authRepo.NewRolePermRepositoryPGX(db)
+	permRepo := authRepo.NewPermRepositoryPGX(db)
+	uc := authUC.NewAuthUseCase(userRepo, appRepo, userRoleRepo, roleRepo, rolePermRepo, permRepo)
 	hdl := authHdl.NewAuthHandler(uc, cfg)
 
 	return &Auth{
 		UserRepository:     userRepo,
+		AppRepository:      appRepo,
 		UserRoleRepository: userRoleRepo,
 		RoleRepository:     roleRepo,
+		PermRepository:     permRepo,
 		Usecase:            uc,
 		Handler:            hdl,
 	}

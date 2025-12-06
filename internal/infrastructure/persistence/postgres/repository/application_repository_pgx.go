@@ -129,7 +129,7 @@ func scanApp(row pgx.Row) (*entity.Application, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, errors.New("not found")
 		}
 		return nil, err
 	}

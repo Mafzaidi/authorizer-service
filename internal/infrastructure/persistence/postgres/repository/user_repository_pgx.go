@@ -133,7 +133,7 @@ func scanUser(row pgx.Row) (*entity.User, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, errors.New("not found")
 		}
 		return nil, err
 	}

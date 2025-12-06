@@ -9,12 +9,18 @@ import (
 	"localdev.me/authorizer/pkg/response"
 )
 
-type CreateRoleRequest struct {
-	AppID       string `json:"application_id"`
-	Code        string `json:"code" validate:"required"`
-	Name        string `json:"name" validate:"required"`
-	Description string `json:"description" validate:"required"`
-}
+type (
+	CreateRoleRequest struct {
+		AppID       string `json:"application_id"`
+		Code        string `json:"code" validate:"required"`
+		Name        string `json:"name" validate:"required"`
+		Description string `json:"description" validate:"required"`
+	}
+
+	GrantRolePermissionsRequest struct {
+		Perms []string `json:"permissions" validate:"required"`
+	}
+)
 
 type RoleHandler struct {
 	roleUC role.Usecase
@@ -28,25 +34,45 @@ func NewRoleHandler(uc role.Usecase) *RoleHandler {
 
 func (h *RoleHandler) Create() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &CreateRoleRequest{}
+		req := &CreateRoleRequest{}
 
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		input := &role.CreateInput{
-			AppID:       pl.AppID,
-			Code:        pl.Code,
-			Name:        pl.Name,
-			Description: pl.Description,
+		in := &role.CreateInput{
+			AppID:       req.AppID,
+			Code:        req.Code,
+			Name:        req.Name,
+			Description: req.Description,
 		}
 
-		if err := h.roleUC.Create(input); err != nil {
+		if err := h.roleUC.Create(in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "role created successfully",
+		})
+	}
+}
+
+func (h *RoleHandler) GrantRolePermissions() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		roleID := c.Param("id")
+		req := &GrantRolePermissionsRequest{}
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
+		}
+
+		perms := req.Perms
+
+		if err := h.roleUC.GrantPerms(roleID, perms); err != nil {
+			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
+		}
+
+		return response.SuccesHandler(c, &response.Response{
+			Message: "permissions granted successfully",
 		})
 	}
 }

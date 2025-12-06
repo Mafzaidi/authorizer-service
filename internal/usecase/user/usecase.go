@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"localdev.me/authorizer/internal/delivery/http/middleware/pwd"
@@ -11,41 +12,49 @@ import (
 )
 
 type userUsecase struct {
-	repo repository.UserRepository
+	repo         repository.UserRepository
+	roleRepo     repository.RoleRepository
+	userRoleRepo repository.UserRoleRepository
 }
 
-func NewUserUsecase(repo repository.UserRepository) Usecase {
+func NewUserUsecase(
+	repo repository.UserRepository,
+	roleRepo repository.RoleRepository,
+	userRoleRepo repository.UserRoleRepository,
+) Usecase {
 	return &userUsecase{
-		repo: repo,
+		repo:         repo,
+		roleRepo:     roleRepo,
+		userRoleRepo: userRoleRepo,
 	}
 }
 
-func (u *userUsecase) Register(input *RegisterInput) error {
-	if len(input.Password) < 8 {
+func (u *userUsecase) Register(in *RegisterInput) error {
+	if len(in.Password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
 
-	if input.Email == "" || input.Password == "" {
+	if in.Email == "" || in.Password == "" {
 		return errors.New("email and password required")
 	}
 
-	existing, _ := u.repo.GetByEmail(input.Email)
-	if existing != nil {
+	existingUser, _ := u.repo.GetByEmail(in.Email)
+	if existingUser != nil {
 		return errors.New("email already exists")
 	}
 
-	hashedPassword, err := pwd.Hash(input.Password)
+	hashedPassword, err := pwd.Hash(in.Password)
 	if err != nil {
 		return errors.New("failed to hash password")
 	}
 
-	newUser := &entity.User{
+	user := &entity.User{
 		ID:            idgen.NewUUIDv7(),
-		Username:      input.Username,
-		FullName:      input.FullName,
-		Phone:         input.Phone,
+		Username:      in.Username,
+		FullName:      in.FullName,
+		Phone:         in.Phone,
 		Password:      hashedPassword,
-		Email:         input.Email,
+		Email:         in.Email,
 		IsActive:      true,
 		EmailVerified: false,
 		PhoneVerified: false,
@@ -53,36 +62,36 @@ func (u *userUsecase) Register(input *RegisterInput) error {
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.repo.Create(newUser)
+	return u.repo.Create(user)
 }
 
-func (u *userUsecase) GetDetail(id string) (*entity.User, error) {
-	if id == "" {
+func (u *userUsecase) GetDetail(userID string) (*entity.User, error) {
+	if userID == "" {
 		return nil, errors.New("userID is required")
 	}
 
-	user, err := u.repo.GetByID(id)
+	user, err := u.repo.GetByID(userID)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, fmt.Errorf("failed: %w", err)
 	}
 
 	return user, nil
 }
 
-func (u *userUsecase) UpdateData(id string, input *UpdateInput) error {
-	if id == "" {
+func (u *userUsecase) UpdateData(userID string, in *UpdateInput) error {
+	if userID == "" {
 		return errors.New("userID is required")
 	}
 
-	user, err := u.repo.GetByID(id)
+	existingUser, err := u.repo.GetByID(userID)
 	if err != nil {
-		return errors.New("user not found")
+		return fmt.Errorf("failed: %w", err)
 	}
 
 	updatedUser := &entity.User{
-		ID:       user.ID,
-		FullName: input.FullName,
-		Phone:    input.Phone,
+		ID:       existingUser.ID,
+		FullName: in.FullName,
+		Phone:    in.Phone,
 	}
 
 	return u.repo.Update(updatedUser)
@@ -100,8 +109,39 @@ func (u *userUsecase) GetList(limit, offset int) ([]*entity.User, error) {
 
 	users, err := u.repo.List(limit, offset)
 	if err != nil {
-		return nil, errors.New("no users found")
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
 
 	return users, nil
+}
+
+func (u *userUsecase) AssignRoles(userID, appID string, roles []string) error {
+
+	if userID == "" {
+		return errors.New("userID is required")
+	}
+
+	if appID == "" {
+		return errors.New("appID is required")
+	}
+
+	if len(roles) == 0 {
+		return errors.New("roles is required")
+	}
+
+	user, err := u.repo.GetByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed: %w", err)
+	}
+
+	var roleIDs []string
+	for _, v := range roles {
+		role, err := u.roleRepo.GetByAppAndCode(appID, v)
+		if err != nil {
+			return fmt.Errorf("failed: %w", err)
+		}
+		roleIDs = append(roleIDs, role.ID)
+	}
+
+	return u.userRoleRepo.Replace(user.ID, roleIDs)
 }

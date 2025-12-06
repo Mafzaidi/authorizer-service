@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 
 	jwt "github.com/golang-jwt/jwt/v4"
@@ -13,22 +14,30 @@ import (
 
 type contextKey string
 
-const userContextKey = contextKey("user")
+const userContextKey = contextKey("user_claims")
 
 func JWTAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cfg := config.GetConfig()
 		authHeader := c.Request().Header.Get("Authorization")
+
 		if authHeader == "" {
 			return response.ErrorHandler(c, http.StatusUnauthorized, "Unauthorized", "token is missing")
 		}
 
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
 			return response.ErrorHandler(c, http.StatusUnauthorized, "Unauthorized", "invalid token format")
 		}
 
-		token, err := jwt.ParseWithClaims(tokenParts[1], &Claims{}, func(token *jwt.Token) (any, error) {
+		rawToken := parts[1]
+
+		token, err := jwt.ParseWithClaims(rawToken, &JWTClaims{}, func(token *jwt.Token) (any, error) {
+
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, echo.ErrUnauthorized
+			}
+
 			return []byte(cfg.JWT.Secret), nil
 		})
 
@@ -36,7 +45,7 @@ func JWTAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return response.ErrorHandler(c, http.StatusUnauthorized, "Unauthorized", "invalid token")
 		}
 
-		claims, ok := token.Claims.(*Claims)
+		claims, ok := token.Claims.(*JWTClaims)
 		if !ok {
 			return response.ErrorHandler(c, http.StatusUnauthorized, "Unauthorized", "invalid token claims")
 		}
@@ -47,18 +56,13 @@ func JWTAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func GetUserFromContext(c echo.Context) *Claims {
-	if user, ok := c.Get(string(userContextKey)).(*Claims); ok {
-		return user
+func GetUserFromContext(c echo.Context) *JWTClaims {
+	if claims, ok := c.Get(string(userContextKey)).(*JWTClaims); ok {
+		return claims
 	}
 	return nil
 }
 
 func HasRole(required string, userRoles []string) bool {
-	for _, r := range userRoles {
-		if r == required {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(userRoles, required)
 }

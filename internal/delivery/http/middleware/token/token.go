@@ -9,7 +9,7 @@ import (
 
 type JWTGen struct {
 	Secret string
-	Claims *middleware.Claims
+	Claims *middleware.JWTClaims
 }
 
 func Generate(t *JWTGen) (string, error) {
@@ -25,12 +25,12 @@ func Generate(t *JWTGen) (string, error) {
 	return tokenString, nil
 }
 
-func Validate(cookie, secret string) (*middleware.Claims, error) {
-	token, err := jwt.ParseWithClaims(cookie, &middleware.Claims{}, func(token *jwt.Token) (interface{}, error) {
+func Validate(cookie, secret string) (*middleware.JWTClaims, error) {
+	token, err := jwt.ParseWithClaims(cookie, &middleware.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
 
-	claims, ok := token.Claims.(*middleware.Claims)
+	claims, ok := token.Claims.(*middleware.JWTClaims)
 	if !ok {
 		return claims, errors.New("token invalid")
 	}

@@ -25,68 +25,62 @@ func NewPermUsecase(
 	}
 }
 
-func (u *permUsecase) Create(i *CreateInput) error {
+func (u *permUsecase) Create(in *CreateInput) error {
 
-	if i.AppID == "" {
+	if in.AppID == "" {
 		return errors.New("application ID is required")
 	}
 
-	if i.Code == "" {
+	if in.Code == "" {
 		return errors.New("resource is required")
 	}
 
-	app, _ := u.appRepo.GetByID(i.AppID)
-	if app == nil {
-		return errors.New("application not found")
+	app, err := u.appRepo.GetByID(in.AppID)
+	if err != nil {
+		return fmt.Errorf("failed: %w", err)
 	}
 
-	existing, _ := u.permRepo.GetByCode(i.Code)
-	if existing != nil {
+	existingPerm, _ := u.permRepo.GetByAppAndCode(app.ID, in.Code)
+	if existingPerm != nil {
 		return errors.New("permission already exists")
 	}
 
-	newPerm := &entity.Permission{
+	perm := &entity.Permission{
 		ID:            idgen.NewUUIDv7(),
 		ApplicationID: app.ID,
-		Code:          i.Code,
-		Description:   i.Description,
+		Code:          in.Code,
+		Description:   in.Description,
 		Version:       1,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.permRepo.Create(newPerm)
+	return u.permRepo.Create(perm)
 }
 
-func (u *permUsecase) SyncPermissions(i *SyncInput) error {
-	if i.AppCode == "" {
+func (u *permUsecase) SyncPermissions(in *SyncInput) error {
+	if in.AppCode == "" {
 		return errors.New("application code is required")
 	}
 
-	app, _ := u.appRepo.GetByCode(i.AppCode)
-
-	if app == nil {
-		return errors.New("application not found")
+	app, err := u.appRepo.GetByCode(in.AppCode)
+	if err != nil {
+		return fmt.Errorf("failed: %w", err)
 	}
 
-	for _, p := range i.Permissions {
-
+	var perms []*entity.Permission
+	for _, v := range in.Permissions {
 		perm := &entity.Permission{
 			ID:            idgen.NewUUIDv7(),
 			ApplicationID: app.ID,
-			Code:          p.Code,
-			Description:   p.Description,
+			Code:          v.Code,
+			Description:   v.Description,
 			Version:       1,
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),
 		}
-
-		err := u.permRepo.Upsert(perm)
-		if err != nil {
-			msg := fmt.Sprintf("sync permissios error %s", err)
-			return errors.New(msg)
-		}
+		perms = append(perms, perm)
 	}
 
-	return nil
+	return u.permRepo.BulkUpsert(perms)
 }

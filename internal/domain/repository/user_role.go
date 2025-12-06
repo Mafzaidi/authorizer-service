@@ -3,8 +3,9 @@ package repository
 import "localdev.me/authorizer/internal/domain/entity"
 
 type UserRoleRepository interface {
-	Assign(userID, roleID string) error
+	Assign(userID string, roleIDs []string) error
 	Unassign(userID, roleID string) error
-	GetRolesByUser(userID string) ([]*entity.Role, error)
+	Replace(userID string, roleIDs []string) error
+	GetRolesByUserAndApp(userID, appID string) ([]*entity.Role, error)
 	GetUsersByRole(roleID string) ([]*entity.User, error)
 }

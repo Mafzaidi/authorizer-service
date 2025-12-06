@@ -17,28 +17,46 @@ import (
 type UserToken struct {
 	User   *entity.User
 	Token  string
-	Claims *middleware.Claims
+	Claims *middleware.JWTClaims
+}
+
+type RoleInfo struct {
+	ID   string
+	Code string
 }
 
 type authUsecase struct {
 	userRepo     repository.UserRepository
+	appRepo      repository.AppRepository
 	userRoleRepo repository.UserRoleRepository
 	roleRepo     repository.RoleRepository
+	rolePermRepo repository.RolePermRepository
+	permRepo     repository.PermRepository
 }
 
 func NewAuthUseCase(
 	userRepo repository.UserRepository,
+	appRepo repository.AppRepository,
 	userRoleRepo repository.UserRoleRepository,
 	roleRepo repository.RoleRepository,
+	rolePermRepo repository.RolePermRepository,
+	permRepo repository.PermRepository,
 ) Usecase {
 	return &authUsecase{
 		userRepo:     userRepo,
+		appRepo:      appRepo,
 		userRoleRepo: userRoleRepo,
 		roleRepo:     roleRepo,
+		rolePermRepo: rolePermRepo,
+		permRepo:     permRepo,
 	}
 }
 
-func (u *authUsecase) Login(email, password, validToken string, cfg *config.Config) (*UserToken, error) {
+func (u *authUsecase) Login(application, email, password, validToken string, cfg *config.Config) (*UserToken, error) {
+	if application == "" {
+		return nil, errors.New("application cannot be empty")
+	}
+
 	if email == "" {
 		return nil, errors.New("email cannot be empty")
 	}
@@ -47,19 +65,36 @@ func (u *authUsecase) Login(email, password, validToken string, cfg *config.Conf
 	if err != nil || !pwd.CheckHash(user.Password, password) {
 		return nil, errors.New("email or password is invalid")
 	}
+	var roles []RoleInfo
 
-	r, err := u.userRoleRepo.GetRolesByUser(user.ID)
-	if err != nil {
-		return nil, errors.New("something went wrong in server")
+	app, _ := u.appRepo.GetByCode(application)
+	if app != nil {
+		userRoles, _ := u.userRoleRepo.GetRolesByUserAndApp(user.ID, app.ID)
+
+		roles = make([]RoleInfo, len(userRoles))
+		for i, r := range userRoles {
+			roles[i] = RoleInfo{ID: r.ID, Code: r.Code}
+		}
 	}
 
-	roles := []string{"user"}
+	roleIDs := make([]string, len(roles))
+	roleNames := make([]string, len(roles))
 
-	for _, role := range r {
-		roles = append(roles, role.Name)
+	for i, r := range roles {
+		roleIDs[i] = r.ID
+		roleNames[i] = r.Code
 	}
 
-	var claims *middleware.Claims
+	permissions := make([]string, 0)
+
+	if len(roleIDs) > 0 {
+		rolePerms, _ := u.rolePermRepo.GetPermsByRoles(roleIDs)
+		for _, p := range rolePerms {
+			permissions = append(permissions, p.Code)
+		}
+	}
+
+	var claims *middleware.JWTClaims
 	if validToken != "" {
 		claims, _ = token.Validate(validToken, cfg.JWT.Secret)
 	}
@@ -73,15 +108,18 @@ func (u *authUsecase) Login(email, password, validToken string, cfg *config.Conf
 		return ut, nil
 	}
 
-	claims = &middleware.Claims{
+	claims = &middleware.JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    cfg.App.Name,
+			Issuer:    "authorizer-service",
+			Subject:   user.ID,
+			Audience:  []string{app.Name},
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(1) * time.Hour)),
 		},
-		UserID:   user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Roles:    roles,
+		Username:    user.Username,
+		Email:       user.Email,
+		Roles:       roleNames,
+		Permissions: permissions,
 	}
 
 	jwtPayload := &token.JWTGen{

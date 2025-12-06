@@ -39,6 +39,10 @@ type (
 		Offset int `query:"page"`
 		Limit  int `query:"limit"`
 	}
+
+	AssignUserRoleRequest struct {
+		Roles []string `json:"roles" validate:"required"`
+	}
 )
 
 type UserHandler struct {
@@ -53,21 +57,21 @@ func NewUserHandler(uc user.Usecase) *UserHandler {
 
 func (h *UserHandler) RegisterUser() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &RegisterUserRequest{}
+		req := &RegisterUserRequest{}
 
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		input := &user.RegisterInput{
-			Username: pl.Username,
-			FullName: pl.FullName,
-			Phone:    pl.Phone,
-			Email:    pl.Email,
-			Password: pl.Password,
+		in := &user.RegisterInput{
+			Username: req.Username,
+			FullName: req.FullName,
+			Phone:    req.Phone,
+			Email:    req.Email,
+			Password: req.Password,
 		}
 
-		if err := h.userUC.Register(input); err != nil {
+		if err := h.userUC.Register(in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -85,21 +89,21 @@ func (h *UserHandler) CreateUser() echo.HandlerFunc {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		pl := &RegisterUserRequest{}
+		req := &RegisterUserRequest{}
 
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		input := &user.RegisterInput{
-			Username: pl.Username,
-			FullName: pl.FullName,
-			Phone:    pl.Phone,
-			Email:    pl.Email,
-			Password: pl.Password,
+		in := &user.RegisterInput{
+			Username: req.Username,
+			FullName: req.FullName,
+			Phone:    req.Phone,
+			Email:    req.Email,
+			Password: req.Password,
 		}
 
-		if err := h.userUC.Register(input); err != nil {
+		if err := h.userUC.Register(in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -111,14 +115,14 @@ func (h *UserHandler) CreateUser() echo.HandlerFunc {
 
 func (h *UserHandler) GetUserProfile() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		ID := c.Param("id")
+		userID := c.Param("id")
 		claims := middleware.GetUserFromContext(c)
 
-		if !middleware.HasRole("superadmin", claims.Roles) && claims.UserID != ID {
+		if !middleware.HasRole("superadmin", claims.Roles) && claims.UserID != userID {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		user, err := h.userUC.GetDetail(ID)
+		user, err := h.userUC.GetDetail(userID)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}
@@ -143,21 +147,24 @@ func (h *UserHandler) GetUserProfile() echo.HandlerFunc {
 
 func (h *UserHandler) UpdateUserProfile() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		ID := c.Param("id")
-		pl := &UpdateUserRequest{}
-
+		userID := c.Param("id")
+		req := &UpdateUserRequest{}
 		claims := middleware.GetUserFromContext(c)
 
-		if !middleware.HasRole("superadmin", claims.Roles) && claims.UserID != ID {
+		if !middleware.HasRole("superadmin", claims.Roles) && claims.UserID != userID {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		input := &user.UpdateInput{
-			FullName: pl.FullName,
-			Phone:    pl.Phone,
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		if err := h.userUC.UpdateData(ID, input); err != nil {
+		in := &user.UpdateInput{
+			FullName: req.FullName,
+			Phone:    req.Phone,
+		}
+
+		if err := h.userUC.UpdateData(userID, in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -191,5 +198,32 @@ func (h *UserHandler) GetUserList() echo.HandlerFunc {
 			Data:    users,
 		})
 
+	}
+}
+
+func (h *UserHandler) AssignUserRoles() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userID := c.Param("id")
+		appID := c.Param("app_id")
+		req := &AssignUserRoleRequest{}
+		claims := middleware.GetUserFromContext(c)
+
+		if claims.UserID != userID {
+			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
+		}
+
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
+		}
+
+		roles := req.Roles
+
+		if err := h.userUC.AssignRoles(userID, appID, roles); err != nil {
+			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
+		}
+
+		return response.SuccesHandler(c, &response.Response{
+			Message: "roles assigned successfully",
+		})
 	}
 }

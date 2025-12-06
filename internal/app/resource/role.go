@@ -2,26 +2,35 @@ package resource
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
-	roleHdl "localdev.me/authorizer/internal/delivery/http/v1"
+	hdl "localdev.me/authorizer/internal/delivery/http/v1"
 	"localdev.me/authorizer/internal/domain/repository"
-	roleRepo "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
-	roleUC "localdev.me/authorizer/internal/usecase/role"
+	repo "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
+	uc "localdev.me/authorizer/internal/usecase/role"
 )
 
 type Role struct {
-	Repository repository.RoleRepository
-	Usecase    roleUC.Usecase
-	Handler    *roleHdl.RoleHandler
+	RoleRepository     repository.RoleRepository
+	AppRepository      repository.AppRepository
+	PermRepository     repository.PermRepository
+	RolePermRepository repository.RolePermRepository
+	Usecase            uc.Usecase
+	Handler            *hdl.RoleHandler
 }
 
 func NewRole(db *pgxpool.Pool) *Role {
-	repo := roleRepo.NewRoleRepositoryPGX(db)
-	uc := roleUC.NewRoleUsecase(repo)
-	hdl := roleHdl.NewRoleHandler(uc)
+	roleRepo := repo.NewRoleRepositoryPGX(db)
+	appRepo := repo.NewAppRepositoryPGX(db)
+	permRepo := repo.NewPermRepositoryPGX(db)
+	rolePermRepo := repo.NewRolePermRepositoryPGX(db)
+	roleUC := uc.NewRoleUsecase(roleRepo, appRepo, permRepo, rolePermRepo)
+	roleHdl := hdl.NewRoleHandler(roleUC)
 
 	return &Role{
-		Repository: repo,
-		Usecase:    uc,
-		Handler:    hdl,
+		RoleRepository:     roleRepo,
+		AppRepository:      appRepo,
+		PermRepository:     permRepo,
+		RolePermRepository: rolePermRepo,
+		Usecase:            roleUC,
+		Handler:            roleHdl,
 	}
 }

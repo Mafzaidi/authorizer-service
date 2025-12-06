@@ -13,17 +13,16 @@ import (
 
 type (
 	LoginRequest struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Application string `json:"application"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
 	}
 
 	LoginResponse struct {
-		ID          string    `json:"id"`
-		Username    string    `json:"username"`
-		Fullname    string    `json:"full_name"`
-		Roles       []string  `json:"roles"`
-		CreatedAt   time.Time `json:"created_at"`
-		UpdatedAt   time.Time `json:"updated_at"`
+		Username    string   `json:"username"`
+		Fullname    string   `json:"full_name"`
+		Roles       []string `json:"roles"`
+		Permissions []string `json:"permission"`
 		AccessToken struct {
 			Type      string    `json:"type"`
 			Token     string    `json:"token"`
@@ -46,8 +45,8 @@ func NewAuthHandler(uc auth.Usecase, cfg *config.Config) *AuthHandler {
 
 func (h *AuthHandler) Login() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &LoginRequest{}
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		req := &LoginRequest{}
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -56,7 +55,7 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 			validToken = cookie.Value
 		}
 
-		data, err := h.authUC.Login(pl.Email, pl.Password, validToken, h.cfg)
+		data, err := h.authUC.Login(req.Application, req.Email, req.Password, validToken, h.cfg)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
@@ -73,12 +72,10 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 		c.SetCookie(newCookie)
 
 		resp := &LoginResponse{
-			ID:        data.User.ID,
-			Username:  data.User.Username,
-			Fullname:  data.User.FullName,
-			Roles:     data.Claims.Roles,
-			CreatedAt: data.User.CreatedAt,
-			UpdatedAt: data.User.UpdatedAt,
+			Username:    data.Claims.Username,
+			Fullname:    data.User.FullName,
+			Roles:       data.Claims.Roles,
+			Permissions: data.Claims.Permissions,
 			AccessToken: struct {
 				Type      string    `json:"type"`
 				Token     string    `json:"token"`

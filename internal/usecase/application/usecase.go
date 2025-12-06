@@ -19,26 +19,26 @@ func NewAppUsecase(repo repository.AppRepository) Usecase {
 	}
 }
 
-func (u *appUsecase) Create(input *CreateInput) error {
+func (u *appUsecase) Create(in *CreateInput) error {
 
-	if input.Code == "" || input.Name == "" {
+	if in.Code == "" || in.Name == "" {
 		return errors.New("code and name is required")
 	}
 
-	existing, _ := u.repo.GetByCode(input.Code)
-	if existing != nil {
+	existingApp, _ := u.repo.GetByCode(in.Code)
+	if existingApp != nil {
 		return errors.New("application already exists")
 	}
 
-	newApp := &entity.Application{
+	app := &entity.Application{
 		ID:          idgen.NewUUIDv7(),
-		Code:        input.Code,
-		Description: input.Description,
-		Name:        input.Name,
-		Metadata:    input.Metadata,
+		Code:        in.Code,
+		Description: in.Description,
+		Name:        in.Name,
+		Metadata:    in.Metadata,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
 
-	return u.repo.Create(newApp)
+	return u.repo.Create(app)
 }

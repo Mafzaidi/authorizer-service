@@ -1,5 +1,5 @@
 app:
-  name: "Authorizer"
+  name: "authorizer-service"
   version: "1.0.0"
 
 server:

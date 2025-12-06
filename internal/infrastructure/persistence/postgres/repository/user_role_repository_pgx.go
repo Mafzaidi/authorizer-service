@@ -19,17 +19,16 @@ func NewUserRoleRepositoryPGX(pool *pgxpool.Pool) repository.UserRoleRepository 
 	}
 }
 
-func (r *userRoleRepositoryPGX) Assign(userID string, roleID string) error {
+func (r *userRoleRepositoryPGX) Assign(userID string, roleIDs []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
 		INSERT INTO authorizer_service.user_roles 
 			(user_id, role_id)
-		VALUES 
-			($1, $2)
+		SELECT $1, unnest($2::uuid[]);
 	`
-	_, err := r.pool.Exec(ctx, query, userID, roleID)
+	_, err := r.pool.Exec(ctx, query, userID, roleIDs)
 
 	return err
 }
@@ -47,18 +46,51 @@ func (r *userRoleRepositoryPGX) Unassign(userID, roleID string) error {
 	return err
 }
 
-func (r *userRoleRepositoryPGX) GetRolesByUser(userID string) ([]*entity.Role, error) {
+func (r *userRoleRepositoryPGX) Replace(userID string, roleIDs []string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	delQuery := `
+		DELETE FROM authorizer_service.user_roles
+		WHERE user_id = $1;
+	`
+	if _, err := tx.Exec(ctx, delQuery, userID); err != nil {
+		return err
+	}
+
+	if len(roleIDs) == 0 {
+		return tx.Commit(ctx)
+	}
+
+	insQuery := `
+		INSERT INTO authorizer_service.user_roles (user_id, role_id)
+		SELECT $1, unnest($2::uuid[]);
+	`
+	if _, err := tx.Exec(ctx, insQuery, userID, roleIDs); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(userID, appID string) ([]*entity.Role, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := `
-		SELECT r.id, r.name, r.description, r.deleted_at
+		SELECT r.id, r.application_id, r.code, r.name, r.description, r.deleted_at
 		FROM authorizer_service.roles r
 		INNER JOIN authorizer_service.user_roles ur ON ur.role_id = r.id
-		WHERE ur.user_id = $1 AND r.deleted_at IS NULL;
+		WHERE ur.user_id = $1 AND r.application_id = $2 AND r.deleted_at IS NULL;
 	`
 
-	rows, err := r.pool.Query(ctx, query, userID)
+	rows, err := r.pool.Query(ctx, query, userID, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +99,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUser(userID string) ([]*entity.Role, e
 	var roles []*entity.Role
 	for rows.Next() {
 		var role entity.Role
-		if err := rows.Scan(&role.ID, &role.Name, &role.Description, &role.DeletedAt); err != nil {
+		if err := rows.Scan(&role.ID, &role.ApplicationID, &role.Code, &role.Name, &role.Description, &role.DeletedAt); err != nil {
 			return nil, err
 		}
 		roles = append(roles, &role)

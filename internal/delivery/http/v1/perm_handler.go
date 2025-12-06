@@ -32,33 +32,33 @@ func NewPermHandler(uc perm.Usecase) *PermHandler {
 
 func (h *PermHandler) Sync() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &SyncPermissionRequest{}
+		req := &SyncPermissionRequest{}
 
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
 		var perms []*perm.PermissionsInput
-		for _, p := range pl.Permissions {
+		for _, v := range req.Permissions {
 			perm := &perm.PermissionsInput{
-				Code:        p.Code,
-				Description: p.Description,
+				Code:        v.Code,
+				Description: v.Description,
 			}
 			perms = append(perms, perm)
 		}
 
-		input := &perm.SyncInput{
-			AppCode:     pl.Application,
+		in := &perm.SyncInput{
+			AppCode:     req.Application,
 			Permissions: perms,
-			Version:     pl.Version,
+			Version:     req.Version,
 		}
 
-		if err := h.permUC.SyncPermissions(input); err != nil {
+		if err := h.permUC.SyncPermissions(in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
 		return response.SuccesHandler(c, &response.Response{
-			Message: "role created successfully",
+			Message: "permissions created successfully",
 		})
 	}
 }

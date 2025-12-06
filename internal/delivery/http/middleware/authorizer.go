@@ -4,10 +4,11 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-type Claims struct {
+type JWTClaims struct {
 	jwt.RegisteredClaims
-	UserID   string
-	Username string
-	Email    string
-	Roles    []string
+	UserID      string   `json:"sub"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email"`
+	Roles       []string `json:"roles"`
+	Permissions []string `json:"permissions"`
 }

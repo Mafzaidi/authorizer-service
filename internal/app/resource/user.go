@@ -2,26 +2,32 @@ package resource
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
-	userHdl "localdev.me/authorizer/internal/delivery/http/v1"
+	hdl "localdev.me/authorizer/internal/delivery/http/v1"
 	"localdev.me/authorizer/internal/domain/repository"
-	userRepo "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
-	userUC "localdev.me/authorizer/internal/usecase/user"
+	repo "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
+	uc "localdev.me/authorizer/internal/usecase/user"
 )
 
 type User struct {
-	Repository repository.UserRepository
-	Usecase    userUC.Usecase
-	Handler    *userHdl.UserHandler
+	UserRepository     repository.UserRepository
+	RoleRepostory      repository.RoleRepository
+	UserRoleRepository repository.UserRoleRepository
+	Usecase            uc.Usecase
+	Handler            *hdl.UserHandler
 }
 
 func NewUser(db *pgxpool.Pool) *User {
-	repo := userRepo.NewUserRepositoryPGX(db)
-	uc := userUC.NewUserUsecase(repo)
-	hdl := userHdl.NewUserHandler(uc)
+	userRepo := repo.NewUserRepositoryPGX(db)
+	roleRepo := repo.NewRoleRepositoryPGX(db)
+	userRoleRepo := repo.NewUserRoleRepositoryPGX(db)
+	userUC := uc.NewUserUsecase(userRepo, roleRepo, userRoleRepo)
+	userHdl := hdl.NewUserHandler(userUC)
 
 	return &User{
-		Repository: repo,
-		Usecase:    uc,
-		Handler:    hdl,
+		UserRepository:     userRepo,
+		RoleRepostory:      roleRepo,
+		UserRoleRepository: userRoleRepo,
+		Usecase:            userUC,
+		Handler:            userHdl,
 	}
 }

@@ -18,13 +18,13 @@ type Perm struct {
 func NePerm(db *pgxpool.Pool) *Perm {
 	permRepo := repo.NewPermRepositoryPGX(db)
 	appRepo := repo.NewAppRepositoryPGX(db)
-	permUC := uc.NewPermUsecase(permRepo, appRepo)
-	permHdl := hdl.NewPermHandler(permUC)
+	uc := uc.NewPermUsecase(permRepo, appRepo)
+	hdl := hdl.NewPermHandler(uc)
 
 	return &Perm{
 		PermRepository: permRepo,
 		AppRepository:  appRepo,
-		Usecase:        permUC,
-		Handler:        permHdl,
+		Usecase:        uc,
+		Handler:        hdl,
 	}
 }

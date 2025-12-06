@@ -27,19 +27,19 @@ func NewAppHandler(uc app.Usecase) *AppHandler {
 
 func (h *AppHandler) Create() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pl := &CreateAppRequest{}
+		req := &CreateAppRequest{}
 
-		if err := json.NewDecoder(c.Request().Body).Decode(&pl); err != nil {
+		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
-		input := &app.CreateInput{
-			Code:        pl.Code,
-			Name:        pl.Name,
-			Description: pl.Description,
+		in := &app.CreateInput{
+			Code:        req.Code,
+			Name:        req.Name,
+			Description: req.Description,
 		}
 
-		if err := h.appUC.Create(input); err != nil {
+		if err := h.appUC.Create(in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 

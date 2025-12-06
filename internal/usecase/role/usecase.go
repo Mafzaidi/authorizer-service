@@ -2,6 +2,7 @@ package role
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"localdev.me/authorizer/internal/domain/entity"
@@ -10,39 +11,82 @@ import (
 )
 
 type roleUsecase struct {
-	repo repository.RoleRepository
+	roleRepo     repository.RoleRepository
+	appRepo      repository.AppRepository
+	permRepo     repository.PermRepository
+	rolePermRepo repository.RolePermRepository
 }
 
-func NewRoleUsecase(repo repository.RoleRepository) Usecase {
+func NewRoleUsecase(
+	roleRepo repository.RoleRepository,
+	appRepo repository.AppRepository,
+	permRepo repository.PermRepository,
+	rolePermRepo repository.RolePermRepository,
+) Usecase {
 	return &roleUsecase{
-		repo: repo,
+		roleRepo:     roleRepo,
+		appRepo:      appRepo,
+		permRepo:     permRepo,
+		rolePermRepo: rolePermRepo,
 	}
 }
 
-func (u *roleUsecase) Create(input *CreateInput) error {
+func (u *roleUsecase) Create(in *CreateInput) error {
 
-	if input.AppID == "" {
+	if in.AppID == "" {
 		return errors.New("app ID is required")
 	}
 
-	if input.Code == "" || input.Name == "" {
+	if in.Code == "" || in.Name == "" {
 		return errors.New("code and name is required")
 	}
 
-	existing, _ := u.repo.GetByAppAndCode(input.AppID, input.Code)
-	if existing != nil {
+	existingRole, _ := u.roleRepo.GetByAppAndCode(in.AppID, in.Code)
+	if existingRole != nil {
 		return errors.New("role already exists")
 	}
 
-	newRole := &entity.Role{
+	role := &entity.Role{
 		ID:            idgen.NewUUIDv7(),
-		ApplicationID: input.AppID,
-		Code:          input.Code,
-		Name:          input.Name,
-		Description:   input.Description,
+		ApplicationID: in.AppID,
+		Code:          in.Code,
+		Name:          in.Name,
+		Description:   in.Description,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.repo.Create(newRole)
+	return u.roleRepo.Create(role)
+}
+
+func (u *roleUsecase) GrantPerms(roleID string, perms []string) error {
+
+	if roleID == "" {
+		return errors.New("roleID is required")
+	}
+
+	if len(perms) == 0 {
+		return errors.New("permissions is required")
+	}
+
+	role, err := u.roleRepo.GetByID(roleID)
+	if err != nil {
+		return fmt.Errorf("failed: %w", err)
+	}
+
+	app, err := u.appRepo.GetByID(role.ApplicationID)
+	if err != nil {
+		return fmt.Errorf("failed: %w", err)
+	}
+
+	var permIDs []string
+	for _, v := range perms {
+		perm, err := u.permRepo.GetByAppAndCode(app.ID, v)
+		if err != nil {
+			return fmt.Errorf("failed: %w", err)
+		}
+		permIDs = append(permIDs, perm.ID)
+	}
+
+	return u.rolePermRepo.Replace(role.ID, permIDs)
 }

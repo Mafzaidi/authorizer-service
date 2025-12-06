@@ -22,10 +22,12 @@ func MapUserPrivateRoutes(g *echo.Group, h *v1.UserHandler) {
 	g.GET("/:id", h.GetUserProfile())
 	g.GET("", h.GetUserList())
 	g.PATCH("/:id", h.UpdateUserProfile())
+	g.POST("/:id/applications/:app_id/roles", h.AssignUserRoles())
 }
 
 func MapRolePrivateRoutes(g *echo.Group, h *v1.RoleHandler) {
 	g.POST("", h.Create())
+	g.POST("/:id/permissions", h.GrantRolePermissions())
 }
 
 func MapAppPrivateRoutes(g *echo.Group, h *v1.AppHandler) {

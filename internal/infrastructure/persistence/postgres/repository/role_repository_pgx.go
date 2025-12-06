@@ -75,44 +75,11 @@ func (r *roleRepositoryPGX) GetByID(id string) (*entity.Role, error) {
 	return scanRole(row)
 }
 
-func (r *roleRepositoryPGX) GetByCode(code string) (*entity.Role, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	query := `SELECT * FROM authorizer_service.roles WHERE code = $1`
-
-	row := r.pool.QueryRow(ctx, query, code)
-	return scanRole(row)
-}
-
-func (r *roleRepositoryPGX) GetByApp(appID string) ([]*entity.Role, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1`
-
-	rows, err := r.pool.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var roles []*entity.Role
-	for rows.Next() {
-		role, err := scanRole(rows)
-		if err != nil {
-			return nil, err
-		}
-		roles = append(roles, role)
-	}
-	return roles, rows.Err()
-}
-
 func (r *roleRepositoryPGX) GetByAppAndCode(appID, code string) (*entity.Role, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1 AND code = $1`
+	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1 AND code = $2`
 
 	row := r.pool.QueryRow(ctx, query, appID, code)
 	return scanRole(row)
@@ -146,6 +113,29 @@ func (r *roleRepositoryPGX) List(limit, offset int) ([]*entity.Role, error) {
 	return roles, rows.Err()
 }
 
+func (r *roleRepositoryPGX) ListByApp(appID string) ([]*entity.Role, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM authorizer_service.roles WHERE application_id = $1`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []*entity.Role
+	for rows.Next() {
+		role, err := scanRole(rows)
+		if err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, rows.Err()
+}
+
 func scanRole(row pgx.Row) (*entity.Role, error) {
 	var r entity.Role
 
@@ -161,7 +151,7 @@ func scanRole(row pgx.Row) (*entity.Role, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, errors.New("not found")
 		}
 		return nil, err
 	}
