@@ -1,6 +1,7 @@
 package role
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -31,7 +32,9 @@ func NewRoleUsecase(
 	}
 }
 
-func (u *roleUsecase) Create(in *CreateInput) error {
+func (uc *roleUsecase) Create(ctx context.Context, in *CreateInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if in.AppID == "" {
 		return errors.New("app ID is required")
@@ -41,7 +44,7 @@ func (u *roleUsecase) Create(in *CreateInput) error {
 		return errors.New("code and name is required")
 	}
 
-	existingRole, _ := u.roleRepo.GetByAppAndCode(in.AppID, in.Code)
+	existingRole, _ := uc.roleRepo.GetByAppAndCode(ctx, in.AppID, in.Code)
 	if existingRole != nil {
 		return errors.New("role already exists")
 	}
@@ -56,10 +59,12 @@ func (u *roleUsecase) Create(in *CreateInput) error {
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.roleRepo.Create(role)
+	return uc.roleRepo.Create(ctx, role)
 }
 
-func (u *roleUsecase) GrantPerms(roleID string, perms []string) error {
+func (uc *roleUsecase) GrantPerms(ctx context.Context, roleID string, perms []string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if roleID == "" {
 		return errors.New("roleID is required")
@@ -69,24 +74,24 @@ func (u *roleUsecase) GrantPerms(roleID string, perms []string) error {
 		return errors.New("permissions is required")
 	}
 
-	role, err := u.roleRepo.GetByID(roleID)
+	role, err := uc.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
 
-	app, err := u.appRepo.GetByID(role.ApplicationID)
+	app, err := uc.appRepo.GetByID(ctx, role.ApplicationID)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
 
 	var permIDs []string
 	for _, v := range perms {
-		perm, err := u.permRepo.GetByAppAndCode(app.ID, v)
+		perm, err := uc.permRepo.GetByAppAndCode(ctx, app.ID, v)
 		if err != nil {
 			return fmt.Errorf("failed: %w", err)
 		}
 		permIDs = append(permIDs, perm.ID)
 	}
 
-	return u.rolePermRepo.Replace(role.ID, permIDs)
+	return uc.rolePermRepo.Replace(ctx, role.ID, permIDs)
 }

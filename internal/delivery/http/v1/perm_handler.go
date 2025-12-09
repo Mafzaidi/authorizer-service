@@ -53,7 +53,7 @@ func (h *PermHandler) Sync() echo.HandlerFunc {
 			Version:     req.Version,
 		}
 
-		if err := h.permUC.SyncPermissions(in); err != nil {
+		if err := h.permUC.SyncPermissions(c.Request().Context(), in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 

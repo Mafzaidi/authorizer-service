@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -19,13 +20,15 @@ func NewAppUsecase(repo repository.AppRepository) Usecase {
 	}
 }
 
-func (u *appUsecase) Create(in *CreateInput) error {
+func (uc *appUsecase) Create(ctx context.Context, in *CreateInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if in.Code == "" || in.Name == "" {
 		return errors.New("code and name is required")
 	}
 
-	existingApp, _ := u.repo.GetByCode(in.Code)
+	existingApp, _ := uc.repo.GetByCode(ctx, in.Code)
 	if existingApp != nil {
 		return errors.New("application already exists")
 	}
@@ -40,5 +43,5 @@ func (u *appUsecase) Create(in *CreateInput) error {
 		UpdatedAt:   time.Now(),
 	}
 
-	return u.repo.Create(app)
+	return uc.repo.Create(ctx, app)
 }

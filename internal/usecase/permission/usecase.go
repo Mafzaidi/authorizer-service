@@ -1,6 +1,7 @@
 package permission
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -25,7 +26,9 @@ func NewPermUsecase(
 	}
 }
 
-func (u *permUsecase) Create(in *CreateInput) error {
+func (uc *permUsecase) Create(ctx context.Context, in *CreateInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if in.AppID == "" {
 		return errors.New("application ID is required")
@@ -35,12 +38,12 @@ func (u *permUsecase) Create(in *CreateInput) error {
 		return errors.New("resource is required")
 	}
 
-	app, err := u.appRepo.GetByID(in.AppID)
+	app, err := uc.appRepo.GetByID(ctx, in.AppID)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
 
-	existingPerm, _ := u.permRepo.GetByAppAndCode(app.ID, in.Code)
+	existingPerm, _ := uc.permRepo.GetByAppAndCode(ctx, app.ID, in.Code)
 	if existingPerm != nil {
 		return errors.New("permission already exists")
 	}
@@ -55,15 +58,18 @@ func (u *permUsecase) Create(in *CreateInput) error {
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.permRepo.Create(perm)
+	return uc.permRepo.Create(ctx, perm)
 }
 
-func (u *permUsecase) SyncPermissions(in *SyncInput) error {
+func (uc *permUsecase) SyncPermissions(ctx context.Context, in *SyncInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	if in.AppCode == "" {
 		return errors.New("application code is required")
 	}
 
-	app, err := u.appRepo.GetByCode(in.AppCode)
+	app, err := uc.appRepo.GetByCode(ctx, in.AppCode)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
@@ -82,5 +88,5 @@ func (u *permUsecase) SyncPermissions(in *SyncInput) error {
 		perms = append(perms, perm)
 	}
 
-	return u.permRepo.BulkUpsert(perms)
+	return uc.permRepo.BulkUpsert(ctx, perms)
 }

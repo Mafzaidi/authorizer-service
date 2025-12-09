@@ -1,6 +1,8 @@
 package token
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -12,7 +14,7 @@ type JWTGen struct {
 	Claims *middleware.JWTClaims
 }
 
-func Generate(t *JWTGen) (string, error) {
+func GenerateAccessToken(t *JWTGen) (string, error) {
 
 	token := jwt.NewWithClaims(
 		jwt.SigningMethodHS256,
@@ -25,7 +27,7 @@ func Generate(t *JWTGen) (string, error) {
 	return tokenString, nil
 }
 
-func Validate(cookie, secret string) (*middleware.JWTClaims, error) {
+func ValidateAccessToken(cookie, secret string) (*middleware.JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(cookie, &middleware.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
@@ -39,4 +41,13 @@ func Validate(cookie, secret string) (*middleware.JWTClaims, error) {
 		return claims, err
 	}
 	return claims, nil
+}
+
+func GenerateRefreshToken() (string, error) {
+	b := make([]byte, 32) // 256-bit
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }

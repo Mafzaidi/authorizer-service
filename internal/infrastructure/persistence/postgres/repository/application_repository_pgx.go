@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,10 +21,7 @@ func NewAppRepositoryPGX(pool *pgxpool.Pool) repository.AppRepository {
 	}
 }
 
-func (r *appRepositoryPGX) Create(app *entity.Application) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) Create(ctx context.Context, app *entity.Application) error {
 	metadataJSON, _ := json.Marshal(app.Metadata)
 
 	query := `
@@ -41,30 +37,21 @@ func (r *appRepositoryPGX) Create(app *entity.Application) error {
 	return err
 }
 
-func (r *appRepositoryPGX) GetByID(id string) (*entity.Application, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) GetByID(ctx context.Context, id string) (*entity.Application, error) {
 	query := `SELECT * FROM authorizer_service.applications WHERE id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, id)
 	return scanApp(row)
 }
 
-func (r *appRepositoryPGX) GetByCode(code string) (*entity.Application, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) GetByCode(ctx context.Context, code string) (*entity.Application, error) {
 	query := `SELECT * FROM authorizer_service.applications WHERE code = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, code)
 	return scanApp(row)
 }
 
-func (r *appRepositoryPGX) Update(app *entity.Application) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) Update(ctx context.Context, app *entity.Application) error {
 	query := `
 		UPDATE authorizer_service.applications
 		SET name = $1,
@@ -77,18 +64,12 @@ func (r *appRepositoryPGX) Update(app *entity.Application) error {
 	return err
 }
 
-func (r *appRepositoryPGX) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) Delete(ctx context.Context, id string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE authorizer_service.applications SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id)
 	return err
 }
 
-func (r *appRepositoryPGX) List(limit, offset int) ([]*entity.Application, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *appRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*entity.Application, error) {
 	query := `
 		SELECT * FROM authorizer_service.applications
 		WHERE deleted_at IS NULL

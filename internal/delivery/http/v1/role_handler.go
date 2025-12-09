@@ -47,7 +47,7 @@ func (h *RoleHandler) Create() echo.HandlerFunc {
 			Description: req.Description,
 		}
 
-		if err := h.roleUC.Create(in); err != nil {
+		if err := h.roleUC.Create(c.Request().Context(), in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -67,7 +67,7 @@ func (h *RoleHandler) GrantRolePermissions() echo.HandlerFunc {
 
 		perms := req.Perms
 
-		if err := h.roleUC.GrantPerms(roleID, perms); err != nil {
+		if err := h.roleUC.GrantPerms(c.Request().Context(), roleID, perms); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 

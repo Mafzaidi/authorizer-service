@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
@@ -19,10 +18,7 @@ func NewRolePermRepositoryPGX(pool *pgxpool.Pool) repository.RolePermRepository 
 	}
 }
 
-func (r *rolePermRepositoryPGX) Grant(roleID, permID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *rolePermRepositoryPGX) Grant(ctx context.Context, roleID, permID string) error {
 	query := `
 		INSERT INTO authorizer_service.role_permissions 
 			(role_id, permission_id)
@@ -34,10 +30,7 @@ func (r *rolePermRepositoryPGX) Grant(roleID, permID string) error {
 	return err
 }
 
-func (r *rolePermRepositoryPGX) Revoke(roleID, permID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *rolePermRepositoryPGX) Revoke(ctx context.Context, roleID, permID string) error {
 	query := `
 		DELETE FROM authorizer_service.role_permissions
 		WHERE role_id = $1 AND permission_id = $2;
@@ -47,10 +40,7 @@ func (r *rolePermRepositoryPGX) Revoke(roleID, permID string) error {
 	return err
 }
 
-func (r *rolePermRepositoryPGX) Replace(roleID string, permIDs []string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *rolePermRepositoryPGX) Replace(ctx context.Context, roleID string, permIDs []string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -80,10 +70,7 @@ func (r *rolePermRepositoryPGX) Replace(roleID string, permIDs []string) error {
 	return tx.Commit(ctx)
 }
 
-func (r *rolePermRepositoryPGX) GetPermsByRole(roleID string) ([]*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *rolePermRepositoryPGX) GetPermsByRole(ctx context.Context, roleID string) ([]*entity.Permission, error) {
 	query := `
 		SELECT p.id, p.code, p.description, p.deleted_at
 		FROM authorizer_service.permissions p
@@ -109,10 +96,7 @@ func (r *rolePermRepositoryPGX) GetPermsByRole(roleID string) ([]*entity.Permiss
 	return perms, nil
 }
 
-func (r *rolePermRepositoryPGX) GetPermsByRoles(roleIDs []string) ([]*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *rolePermRepositoryPGX) GetPermsByRoles(ctx context.Context, roleIDs []string) ([]*entity.Permission, error) {
 	query := `
 		SELECT p.id, p.code, p.description, p.deleted_at
 		FROM authorizer_service.permissions p

@@ -28,6 +28,7 @@ type (
 			Token     string    `json:"token"`
 			ExpiresAt time.Time `json:"expires_at"`
 		} `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 )
 
@@ -55,7 +56,7 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 			validToken = cookie.Value
 		}
 
-		data, err := h.authUC.Login(req.Application, req.Email, req.Password, validToken, h.cfg)
+		data, err := h.authUC.Login(c.Request().Context(), req.Application, req.Email, req.Password, validToken, h.cfg)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
@@ -85,6 +86,7 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 				Token:     data.Token,
 				ExpiresAt: data.Claims.ExpiresAt.Time,
 			},
+			RefreshToken: data.RefreshToken,
 		}
 
 		return response.SuccesHandler(c, &response.Response{

@@ -1,5 +1,7 @@
 package application
 
+import "context"
+
 type Usecase interface {
-	Create(input *CreateInput) error
+	Create(ctx context.Context, input *CreateInput) error
 }

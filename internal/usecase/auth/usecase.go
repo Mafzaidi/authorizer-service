@@ -1,59 +1,49 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"localdev.me/authorizer/config"
 	"localdev.me/authorizer/internal/delivery/http/middleware"
 	"localdev.me/authorizer/internal/delivery/http/middleware/pwd"
-	"localdev.me/authorizer/internal/delivery/http/middleware/token"
 	"localdev.me/authorizer/internal/domain/entity"
 	"localdev.me/authorizer/internal/domain/repository"
+	"localdev.me/authorizer/internal/service"
 )
 
 type UserToken struct {
-	User   *entity.User
-	Token  string
-	Claims *middleware.JWTClaims
-}
-
-type RoleInfo struct {
-	ID   string
-	Code string
+	User         *entity.User
+	Token        string
+	RefreshToken string
+	Claims       *middleware.JWTClaims
 }
 
 type authUsecase struct {
-	userRepo     repository.UserRepository
-	appRepo      repository.AppRepository
-	userRoleRepo repository.UserRoleRepository
-	roleRepo     repository.RoleRepository
-	rolePermRepo repository.RolePermRepository
-	permRepo     repository.PermRepository
+	authRepo repository.AuthRepository
+	userRepo repository.UserRepository
+	jwtSvc   service.JWTService
 }
 
 func NewAuthUseCase(
+	authRepo repository.AuthRepository,
 	userRepo repository.UserRepository,
-	appRepo repository.AppRepository,
-	userRoleRepo repository.UserRoleRepository,
-	roleRepo repository.RoleRepository,
-	rolePermRepo repository.RolePermRepository,
-	permRepo repository.PermRepository,
+	jwtSvc service.JWTService,
 ) Usecase {
 	return &authUsecase{
-		userRepo:     userRepo,
-		appRepo:      appRepo,
-		userRoleRepo: userRoleRepo,
-		roleRepo:     roleRepo,
-		rolePermRepo: rolePermRepo,
-		permRepo:     permRepo,
+		authRepo: authRepo,
+		userRepo: userRepo,
+		jwtSvc:   jwtSvc,
 	}
 }
 
-func (u *authUsecase) Login(application, email, password, validToken string, cfg *config.Config) (*UserToken, error) {
-	if application == "" {
+func (uc *authUsecase) Login(ctx context.Context, appCode, email, password, validToken string, cfg *config.Config) (*UserToken, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if appCode == "" {
 		return nil, errors.New("application cannot be empty")
 	}
 
@@ -61,84 +51,49 @@ func (u *authUsecase) Login(application, email, password, validToken string, cfg
 		return nil, errors.New("email cannot be empty")
 	}
 
-	user, err := u.userRepo.GetByEmail(email)
+	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil || !pwd.CheckHash(user.Password, password) {
 		return nil, errors.New("email or password is invalid")
 	}
-	var roles []RoleInfo
 
-	app, _ := u.appRepo.GetByCode(application)
-	if app != nil {
-		userRoles, _ := u.userRoleRepo.GetRolesByUserAndApp(user.ID, app.ID)
-
-		roles = make([]RoleInfo, len(userRoles))
-		for i, r := range userRoles {
-			roles[i] = RoleInfo{ID: r.ID, Code: r.Code}
-		}
-	}
-
-	roleIDs := make([]string, len(roles))
-	roleNames := make([]string, len(roles))
-
-	for i, r := range roles {
-		roleIDs[i] = r.ID
-		roleNames[i] = r.Code
-	}
-
-	permissions := make([]string, 0)
-
-	if len(roleIDs) > 0 {
-		rolePerms, _ := u.rolePermRepo.GetPermsByRoles(roleIDs)
-		for _, p := range rolePerms {
-			permissions = append(permissions, p.Code)
-		}
-	}
-
-	var claims *middleware.JWTClaims
-	if validToken != "" {
-		claims, _ = token.Validate(validToken, cfg.JWT.Secret)
-	}
-
-	if claims != nil && claims.Email == email {
-		ut := &UserToken{
-			User:   user,
-			Token:  validToken,
-			Claims: claims,
-		}
-		return ut, nil
-	}
-
-	claims = &middleware.JWTClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "authorizer-service",
-			Subject:   user.ID,
-			Audience:  []string{app.Name},
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(1) * time.Hour)),
-		},
-		Username:    user.Username,
-		Email:       user.Email,
-		Roles:       roleNames,
-		Permissions: permissions,
-	}
-
-	jwtPayload := &token.JWTGen{
-		Secret: cfg.JWT.Secret,
-		Claims: claims,
-	}
-
-	token, err := token.Generate(jwtPayload)
-
+	accessToken, claims, err := uc.jwtSvc.GenerateAccessToken(ctx, user.ID, appCode, validToken, cfg.JWT.Secret)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil, errors.New("failed to generate jwt")
+		return nil, errors.New("failed to generate access token")
 	}
 
-	ut := &UserToken{
-		User:   user,
-		Token:  token,
-		Claims: claims,
+	refreshToken, err := uc.jwtSvc.GenerateRefreshToken()
+	if err != nil {
+		return nil, errors.New("failed generating refresh token")
 	}
 
-	return ut, nil
+	err = uc.authRepo.StoreRefreshToken(ctx, user.ID, refreshToken)
+	if err != nil {
+		return nil, errors.New("failed saving refresh token")
+	}
+
+	token := &UserToken{
+		User:         user,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		Claims:       claims,
+	}
+
+	return token, nil
+}
+
+func (uc *authUsecase) RefreshToken(ctx context.Context, refreshToken string, cfg *config.Config) (string, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	userID, err := uc.authRepo.GetUserIDByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return "", "", errors.New("invalid refresh token")
+	}
+
+	savedToken, err := uc.authRepo.GetRefreshToken(ctx, userID)
+	if err != nil || savedToken != refreshToken {
+		return "", "", errors.New("refresh token mismatch")
+	}
+	fmt.Println(savedToken)
+	return "", "", nil
 }

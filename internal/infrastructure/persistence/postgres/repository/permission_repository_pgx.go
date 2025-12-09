@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,10 +21,7 @@ func NewPermRepositoryPGX(pool *pgxpool.Pool) repository.PermRepository {
 	}
 }
 
-func (r *permRepositoryPGX) Create(perm *entity.Permission) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) Create(ctx context.Context, perm *entity.Permission) error {
 	query := `
 		INSERT INTO authorizer_service.permissions 
 			(id, application_id, code, description, version, created_by)
@@ -39,10 +35,7 @@ func (r *permRepositoryPGX) Create(perm *entity.Permission) error {
 	return err
 }
 
-func (r *permRepositoryPGX) Update(perm *entity.Permission) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) Update(ctx context.Context, perm *entity.Permission) error {
 	query := `
 		UPDATE authorizer_service.permissions
 		SET application_id = $1,
@@ -59,10 +52,7 @@ func (r *permRepositoryPGX) Update(perm *entity.Permission) error {
 	return err
 }
 
-func (r *permRepositoryPGX) Upsert(perm *entity.Permission) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) Upsert(ctx context.Context, perm *entity.Permission) error {
 	query := `
 		INSERT INTO authorizer_service.permissions (id, application_id, code, description, version)
         VALUES ($1, $2, $3, $4, $5)
@@ -76,9 +66,7 @@ func (r *permRepositoryPGX) Upsert(perm *entity.Permission) error {
 	return err
 }
 
-func (r *permRepositoryPGX) BulkUpsert(perms []*entity.Permission) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func (r *permRepositoryPGX) BulkUpsert(ctx context.Context, perms []*entity.Permission) error {
 	const chunkSize = 100
 
 	for _, c := range utils.Chunk(perms, chunkSize) {
@@ -124,38 +112,26 @@ func (r *permRepositoryPGX) bulkUpsertChunk(ctx context.Context, perms []*entity
 	return tx.Commit(ctx)
 }
 
-func (r *permRepositoryPGX) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) Delete(ctx context.Context, id string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE authorizer_service.permissions SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id)
 	return err
 }
 
-func (r *permRepositoryPGX) GetByID(id string) (*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) GetByID(ctx context.Context, id string) (*entity.Permission, error) {
 	query := `SELECT * FROM authorizer_service.permissions WHERE id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, id)
 	return scanPerm(row)
 }
 
-func (r *permRepositoryPGX) GetByAppAndCode(appID, code string) (*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) GetByAppAndCode(ctx context.Context, appID, code string) (*entity.Permission, error) {
 	query := `SELECT * FROM authorizer_service.permissions WHERE application_id = $1 AND code = $2 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, appID, code)
 	return scanPerm(row)
 }
 
-func (r *permRepositoryPGX) List(limit, offset int) ([]*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*entity.Permission, error) {
 	query := `
 		SELECT * FROM authorizer_service.permissions
 		WHERE deleted_at IS NULL
@@ -180,10 +156,7 @@ func (r *permRepositoryPGX) List(limit, offset int) ([]*entity.Permission, error
 	return perms, rows.Err()
 }
 
-func (r *permRepositoryPGX) ListByApp(appID string) ([]*entity.Permission, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *permRepositoryPGX) ListByApp(ctx context.Context, appID string) ([]*entity.Permission, error) {
 	query := `SELECT * FROM authorizer_service.permissions WHERE application_id = $1 AND deleted_at IS NULL`
 
 	rows, err := r.pool.Query(ctx, query, appID)

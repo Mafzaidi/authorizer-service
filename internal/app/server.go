@@ -13,19 +13,22 @@ import (
 	"github.com/labstack/echo/v4"
 	"localdev.me/authorizer/config"
 	"localdev.me/authorizer/internal/infrastructure/persistence/postgres"
+	"localdev.me/authorizer/internal/infrastructure/persistence/redis"
 )
 
 type Server struct {
 	echo      *echo.Echo
 	cfg       *config.Config
 	postgreDB *postgres.PostgreSQL
+	redis     *redis.Redis
 }
 
-func NewServer(cfg *config.Config, postgreDB *postgres.PostgreSQL) *Server {
+func NewServer(cfg *config.Config, postgreDB *postgres.PostgreSQL, redis *redis.Redis) *Server {
 	return &Server{
 		echo:      echo.New(),
 		cfg:       cfg,
 		postgreDB: postgreDB,
+		redis:     redis,
 	}
 }
 

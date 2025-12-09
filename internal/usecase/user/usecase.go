@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -29,7 +30,10 @@ func NewUserUsecase(
 	}
 }
 
-func (u *userUsecase) Register(in *RegisterInput) error {
+func (uc *userUsecase) Register(ctx context.Context, in *RegisterInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	if len(in.Password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
@@ -38,7 +42,7 @@ func (u *userUsecase) Register(in *RegisterInput) error {
 		return errors.New("email and password required")
 	}
 
-	existingUser, _ := u.repo.GetByEmail(in.Email)
+	existingUser, _ := uc.repo.GetByEmail(ctx, in.Email)
 	if existingUser != nil {
 		return errors.New("email already exists")
 	}
@@ -62,15 +66,18 @@ func (u *userUsecase) Register(in *RegisterInput) error {
 		UpdatedAt:     time.Now(),
 	}
 
-	return u.repo.Create(user)
+	return uc.repo.Create(ctx, user)
 }
 
-func (u *userUsecase) GetDetail(userID string) (*entity.User, error) {
+func (uc *userUsecase) GetDetail(ctx context.Context, userID string) (*entity.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	if userID == "" {
 		return nil, errors.New("userID is required")
 	}
 
-	user, err := u.repo.GetByID(userID)
+	user, err := uc.repo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed: %w", err)
 	}
@@ -78,12 +85,15 @@ func (u *userUsecase) GetDetail(userID string) (*entity.User, error) {
 	return user, nil
 }
 
-func (u *userUsecase) UpdateData(userID string, in *UpdateInput) error {
+func (uc *userUsecase) UpdateData(ctx context.Context, userID string, in *UpdateInput) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	if userID == "" {
 		return errors.New("userID is required")
 	}
 
-	existingUser, err := u.repo.GetByID(userID)
+	existingUser, err := uc.repo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
@@ -94,10 +104,12 @@ func (u *userUsecase) UpdateData(userID string, in *UpdateInput) error {
 		Phone:    in.Phone,
 	}
 
-	return u.repo.Update(updatedUser)
+	return uc.repo.Update(ctx, updatedUser)
 }
 
-func (u *userUsecase) GetList(limit, offset int) ([]*entity.User, error) {
+func (uc *userUsecase) GetList(ctx context.Context, limit, offset int) ([]*entity.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if limit == 0 {
 		limit = 50
@@ -107,7 +119,7 @@ func (u *userUsecase) GetList(limit, offset int) ([]*entity.User, error) {
 		offset = 10
 	}
 
-	users, err := u.repo.List(limit, offset)
+	users, err := uc.repo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
@@ -115,7 +127,9 @@ func (u *userUsecase) GetList(limit, offset int) ([]*entity.User, error) {
 	return users, nil
 }
 
-func (u *userUsecase) AssignRoles(userID, appID string, roles []string) error {
+func (uc *userUsecase) AssignRoles(ctx context.Context, userID, appID string, roles []string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if userID == "" {
 		return errors.New("userID is required")
@@ -129,19 +143,19 @@ func (u *userUsecase) AssignRoles(userID, appID string, roles []string) error {
 		return errors.New("roles is required")
 	}
 
-	user, err := u.repo.GetByID(userID)
+	user, err := uc.repo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed: %w", err)
 	}
 
 	var roleIDs []string
 	for _, v := range roles {
-		role, err := u.roleRepo.GetByAppAndCode(appID, v)
+		role, err := uc.roleRepo.GetByAppAndCode(ctx, appID, v)
 		if err != nil {
 			return fmt.Errorf("failed: %w", err)
 		}
 		roleIDs = append(roleIDs, role.ID)
 	}
 
-	return u.userRoleRepo.Replace(user.ID, roleIDs)
+	return uc.userRoleRepo.Replace(ctx, user.ID, roleIDs)
 }

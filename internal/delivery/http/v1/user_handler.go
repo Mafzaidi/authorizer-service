@@ -71,7 +71,7 @@ func (h *UserHandler) RegisterUser() echo.HandlerFunc {
 			Password: req.Password,
 		}
 
-		if err := h.userUC.Register(in); err != nil {
+		if err := h.userUC.Register(c.Request().Context(), in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -103,7 +103,7 @@ func (h *UserHandler) CreateUser() echo.HandlerFunc {
 			Password: req.Password,
 		}
 
-		if err := h.userUC.Register(in); err != nil {
+		if err := h.userUC.Register(c.Request().Context(), in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -122,7 +122,7 @@ func (h *UserHandler) GetUserProfile() echo.HandlerFunc {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		user, err := h.userUC.GetDetail(userID)
+		user, err := h.userUC.GetDetail(c.Request().Context(), userID)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}
@@ -164,7 +164,7 @@ func (h *UserHandler) UpdateUserProfile() echo.HandlerFunc {
 			Phone:    req.Phone,
 		}
 
-		if err := h.userUC.UpdateData(userID, in); err != nil {
+		if err := h.userUC.UpdateData(c.Request().Context(), userID, in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 
@@ -188,7 +188,7 @@ func (h *UserHandler) GetUserList() echo.HandlerFunc {
 			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		}
 
-		users, err := h.userUC.GetList(query.Offset, query.Limit)
+		users, err := h.userUC.GetList(c.Request().Context(), query.Offset, query.Limit)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}
@@ -218,7 +218,7 @@ func (h *UserHandler) AssignUserRoles() echo.HandlerFunc {
 
 		roles := req.Roles
 
-		if err := h.userUC.AssignRoles(userID, appID, roles); err != nil {
+		if err := h.userUC.AssignRoles(c.Request().Context(), userID, appID, roles); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 

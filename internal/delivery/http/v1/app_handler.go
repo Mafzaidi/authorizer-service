@@ -39,7 +39,7 @@ func (h *AppHandler) Create() echo.HandlerFunc {
 			Description: req.Description,
 		}
 
-		if err := h.appUC.Create(in); err != nil {
+		if err := h.appUC.Create(c.Request().Context(), in); err != nil {
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
 

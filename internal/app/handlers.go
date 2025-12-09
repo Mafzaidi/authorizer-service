@@ -17,7 +17,7 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 		AllowMethods:     []string{echo.POST, echo.GET, echo.OPTIONS},
 	}))
 
-	auth := resource.NewAuth(s.postgreDB.Pool, s.cfg)
+	auth := resource.NewAuth(s.postgreDB.Pool, s.cfg, s.redis.Client)
 	user := resource.NewUser(s.postgreDB.Pool)
 	role := resource.NewRole(s.postgreDB.Pool)
 	app := resource.NewApp(s.postgreDB.Pool)

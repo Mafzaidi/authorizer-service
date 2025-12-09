@@ -1,6 +1,8 @@
 package permission
 
+import "context"
+
 type Usecase interface {
-	Create(input *CreateInput) error
-	SyncPermissions(i *SyncInput) error
+	Create(ctx context.Context, input *CreateInput) error
+	SyncPermissions(ctx context.Context, i *SyncInput) error
 }

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
@@ -19,10 +18,7 @@ func NewUserRoleRepositoryPGX(pool *pgxpool.Pool) repository.UserRoleRepository 
 	}
 }
 
-func (r *userRoleRepositoryPGX) Assign(userID string, roleIDs []string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRoleRepositoryPGX) Assign(ctx context.Context, userID string, roleIDs []string) error {
 	query := `
 		INSERT INTO authorizer_service.user_roles 
 			(user_id, role_id)
@@ -33,10 +29,7 @@ func (r *userRoleRepositoryPGX) Assign(userID string, roleIDs []string) error {
 	return err
 }
 
-func (r *userRoleRepositoryPGX) Unassign(userID, roleID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRoleRepositoryPGX) Unassign(ctx context.Context, userID, roleID string) error {
 	query := `
 		DELETE FROM authorizer_service.user_roles
 		WHERE user_id = $1 AND role_id = $2;
@@ -46,10 +39,7 @@ func (r *userRoleRepositoryPGX) Unassign(userID, roleID string) error {
 	return err
 }
 
-func (r *userRoleRepositoryPGX) Replace(userID string, roleIDs []string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRoleRepositoryPGX) Replace(ctx context.Context, userID string, roleIDs []string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -79,10 +69,7 @@ func (r *userRoleRepositoryPGX) Replace(userID string, roleIDs []string) error {
 	return tx.Commit(ctx)
 }
 
-func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(userID, appID string) ([]*entity.Role, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(ctx context.Context, userID, appID string) ([]*entity.Role, error) {
 	query := `
 		SELECT r.id, r.application_id, r.code, r.name, r.description, r.deleted_at
 		FROM authorizer_service.roles r
@@ -108,10 +95,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(userID, appID string) ([]*e
 	return roles, nil
 }
 
-func (r *userRoleRepositoryPGX) GetUsersByRole(roleID string) ([]*entity.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRoleRepositoryPGX) GetUsersByRole(ctx context.Context, roleID string) ([]*entity.User, error) {
 	query := `
 		SELECT u.id, u.username, u.full_name, r.deleted_at
 		FROM authorizer_service.roles r

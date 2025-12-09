@@ -1,12 +1,16 @@
 package repository
 
-import "localdev.me/authorizer/internal/domain/entity"
+import (
+	"context"
+
+	"localdev.me/authorizer/internal/domain/entity"
+)
 
 type AppRepository interface {
-	Create(app *entity.Application) error
-	GetByID(id string) (*entity.Application, error)
-	GetByCode(code string) (*entity.Application, error)
-	Update(app *entity.Application) error
-	Delete(id string) error
-	List(limit, offset int) ([]*entity.Application, error)
+	Create(ctx context.Context, app *entity.Application) error
+	GetByID(ctx context.Context, id string) (*entity.Application, error)
+	GetByCode(ctx context.Context, code string) (*entity.Application, error)
+	Update(ctx context.Context, app *entity.Application) error
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context, limit, offset int) ([]*entity.Application, error)
 }

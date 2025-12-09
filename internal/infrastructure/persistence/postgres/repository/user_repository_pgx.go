@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,10 +20,7 @@ func NewUserRepositoryPGX(pool *pgxpool.Pool) repository.UserRepository {
 	}
 }
 
-func (r *userRepositoryPGX) Create(user *entity.User) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) Create(ctx context.Context, user *entity.User) error {
 	query := `
 		INSERT INTO authorizer_service.users 
 			(id, email, username, password, full_name, phone, is_active, email_verified)
@@ -40,30 +36,21 @@ func (r *userRepositoryPGX) Create(user *entity.User) error {
 	return err
 }
 
-func (r *userRepositoryPGX) GetByID(id string) (*entity.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) GetByID(ctx context.Context, id string) (*entity.User, error) {
 	query := `SELECT * FROM authorizer_service.users WHERE id = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, id)
 	return scanUser(row)
 }
 
-func (r *userRepositoryPGX) GetByEmail(email string) (*entity.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) GetByEmail(ctx context.Context, email string) (*entity.User, error) {
 	query := `SELECT * FROM authorizer_service.users WHERE email = $1 AND deleted_at IS NULL`
 
 	row := r.pool.QueryRow(ctx, query, email)
 	return scanUser(row)
 }
 
-func (r *userRepositoryPGX) Update(user *entity.User) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) Update(ctx context.Context, user *entity.User) error {
 	query := `
 		UPDATE authorizer_service.users
 		SET full_name = $1,
@@ -78,18 +65,12 @@ func (r *userRepositoryPGX) Update(user *entity.User) error {
 	return err
 }
 
-func (r *userRepositoryPGX) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) Delete(ctx context.Context, id string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE authorizer_service.users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, id)
 	return err
 }
 
-func (r *userRepositoryPGX) List(limit, offset int) ([]*entity.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *userRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*entity.User, error) {
 	query := `
 		SELECT * FROM authorizer_service.users
 		WHERE deleted_at IS NULL

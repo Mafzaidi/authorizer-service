@@ -1,11 +1,15 @@
 package repository
 
-import "localdev.me/authorizer/internal/domain/entity"
+import (
+	"context"
+
+	"localdev.me/authorizer/internal/domain/entity"
+)
 
 type UserRoleRepository interface {
-	Assign(userID string, roleIDs []string) error
-	Unassign(userID, roleID string) error
-	Replace(userID string, roleIDs []string) error
-	GetRolesByUserAndApp(userID, appID string) ([]*entity.Role, error)
-	GetUsersByRole(roleID string) ([]*entity.User, error)
+	Assign(ctx context.Context, userID string, roleIDs []string) error
+	Unassign(ctx context.Context, userID, roleID string) error
+	Replace(ctx context.Context, userID string, roleIDs []string) error
+	GetRolesByUserAndApp(ctx context.Context, userID, appID string) ([]*entity.Role, error)
+	GetUsersByRole(ctx context.Context, roleID string) ([]*entity.User, error)
 }

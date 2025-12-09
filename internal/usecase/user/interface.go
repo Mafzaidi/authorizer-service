@@ -1,11 +1,15 @@
 package user
 
-import "localdev.me/authorizer/internal/domain/entity"
+import (
+	"context"
+
+	"localdev.me/authorizer/internal/domain/entity"
+)
 
 type Usecase interface {
-	Register(req *RegisterInput) error
-	GetDetail(userID string) (*entity.User, error)
-	UpdateData(userID string, input *UpdateInput) error
-	GetList(limit, offset int) ([]*entity.User, error)
-	AssignRoles(userID, appID string, roles []string) error
+	Register(ctx context.Context, req *RegisterInput) error
+	GetDetail(ctx context.Context, userID string) (*entity.User, error)
+	UpdateData(ctx context.Context, userID string, input *UpdateInput) error
+	GetList(ctx context.Context, limit, offset int) ([]*entity.User, error)
+	AssignRoles(ctx context.Context, userID, appID string, roles []string) error
 }
