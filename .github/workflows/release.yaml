@@ -1,0 +1,118 @@
+name: Build & Push Docker Image
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - '*'
+
+env:
+  # Image destination (set langsung)
+  REGISTRY: docker.io
+  IMAGE_NAME: mafzaidi93/authorizer-service
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tag: true
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Build Go binary
+      run: |
+        mkdir -p bin
+        go build -ldflags "-s -w" -o bin/elog-service ./cmd/api
+
+    - name: Set image version and commit hash
+      id: vars
+      run: |
+        TAG=$(git describe --tags --abbrev=0 || echo "0.0.0")
+        COMMIT=$(git rev-parse --short HEAD)
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+
+    - name: Log in to Docker registry
+      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Build Docker image
+      run: |
+        docker build \
+          --build-arg VERSION=${{ steps.vars.outputs.tag }} \
+          --build-arg COMMIT=${{ steps.vars.outputs.commit }} \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }} \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+
+    - name: Push Docker image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+    
+    - name: Checkout manifest repo
+      uses: actions/checkout@v4
+      with:
+        repository: Mafzaidi/elog-service-manifest
+        token: ${{ secrets.GH_PAT }}
+        path: manifests
+
+    - name: Setup yq
+      uses: mikefarah/yq@v4
+
+    - name: Determine version bump type
+      id: bump
+      run: |
+        cd manifests
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "Last commit message: $COMMIT_MSG"
+
+        if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]] || [[ "$COMMIT_MSG" == *"feat!"* ]]; then
+          echo "type=major" >> $GITHUB_OUTPUT
+        elif [[ "$COMMIT_MSG" == feat:* ]]; then
+          echo "type=minor" >> $GITHUB_OUTPUT
+        elif [[ "$COMMIT_MSG" == fix:* ]]; then
+          echo "type=patch" >> $GITHUB_OUTPUT
+        else
+          echo "type=patch" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Update Helm Chart version
+      run: |
+        cd manifests
+        TAG=${{ steps.vars.outputs.tag }}
+        CURRENT_CHART_VERSION=$(yq e '.version' Chart.yaml)
+        IFS='.' read -r MAJOR MINOR PATCH <<<"$CURRENT_CHART_VERSION"
+        BUMP=${{ steps.bump.outputs.type }}
+
+        if [ "$BUMP" = "major" ]; then
+          MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+        elif [ "$BUMP" = "minor" ]; then
+          MINOR=$((MINOR + 1)); PATCH=0
+        else
+          PATCH=$((PATCH + 1))
+        fi
+
+        NEW_CHART_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        echo "Bumping chart version: ${CURRENT_CHART_VERSION} → ${NEW_CHART_VERSION} (${BUMP})"
+
+        yq e -i ".version = \"${NEW_CHART_VERSION}\"" Chart.yaml
+        yq e -i ".appVersion = \"${TAG}\"" Chart.yaml
+        yq e -i ".image.tag = \"${TAG}\"" values.yaml
+
+        echo "CHART_VERSION=${NEW_CHART_VERSION}" >> $GITHUB_ENV
+
+    - name: Commit and push changes
+      run: |
+        cd manifests
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "chore: update appVersion to ${TAG}" || echo "No changes to commit"
+        git push
