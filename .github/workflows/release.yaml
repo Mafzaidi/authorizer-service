@@ -30,7 +30,7 @@ jobs:
     - name: Build Go binary
       run: |
         mkdir -p bin
-        go build -ldflags "-s -w" -o bin/elog-service ./cmd/api
+        go build -ldflags "-s -w" -o bin/authorizer-service ./cmd/api
 
     - name: Set image version and commit hash
       id: vars
@@ -59,7 +59,7 @@ jobs:
     - name: Checkout manifest repo
       uses: actions/checkout@v4
       with:
-        repository: Mafzaidi/elog-service-manifest
+        repository: Mafzaidi/authorizer-service-manifest
         token: ${{ secrets.GH_PAT }}
         path: manifests
 
