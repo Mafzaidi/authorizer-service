@@ -1,3 +1,9 @@
+## 0.13.0 (2025-12-09)
+
+### Feat
+
+- add refresh token generation
+
 ## 0.12.0 (2025-12-07)
 
 ### Feat
