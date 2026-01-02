@@ -84,16 +84,7 @@ func (r *rolePermRepositoryPGX) GetPermsByRole(ctx context.Context, roleID strin
 	}
 	defer rows.Close()
 
-	var perms []*entity.Permission
-	for rows.Next() {
-		var perm entity.Permission
-		if err := rows.Scan(&perm.ID, &perm.Code, &perm.Description, &perm.DeletedAt); err != nil {
-			return nil, err
-		}
-		perms = append(perms, &perm)
-	}
-
-	return perms, nil
+	return scanPerms(rows)
 }
 
 func (r *rolePermRepositoryPGX) GetPermsByRoles(ctx context.Context, roleIDs []string) ([]*entity.Permission, error) {
@@ -110,18 +101,5 @@ func (r *rolePermRepositoryPGX) GetPermsByRoles(ctx context.Context, roleIDs []s
 	}
 	defer rows.Close()
 
-	var perms []*entity.Permission
-	for rows.Next() {
-		var perm entity.Permission
-		if err := rows.Scan(&perm.ID, &perm.Code, &perm.Description, &perm.DeletedAt); err != nil {
-			return nil, err
-		}
-		perms = append(perms, &perm)
-	}
-
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return perms, nil
+	return scanPerms(rows)
 }

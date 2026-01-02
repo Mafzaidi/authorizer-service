@@ -50,9 +50,9 @@ func (uc *permUsecase) Create(ctx context.Context, in *CreateInput) error {
 
 	perm := &entity.Permission{
 		ID:            idgen.NewUUIDv7(),
-		ApplicationID: app.ID,
+		ApplicationID: &app.ID,
 		Code:          in.Code,
-		Description:   in.Description,
+		Description:   &in.Description,
 		Version:       1,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -78,9 +78,9 @@ func (uc *permUsecase) SyncPermissions(ctx context.Context, in *SyncInput) error
 	for _, v := range in.Permissions {
 		perm := &entity.Permission{
 			ID:            idgen.NewUUIDv7(),
-			ApplicationID: app.ID,
+			ApplicationID: &app.ID,
 			Code:          v.Code,
-			Description:   v.Description,
+			Description:   &v.Description,
 			Version:       1,
 			CreatedAt:     time.Now(),
 			UpdatedAt:     time.Now(),

@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
 	"localdev.me/authorizer/internal/domain/repository"
+	"localdev.me/authorizer/internal/infrastructure/persistence/postgres/model"
 )
 
 type roleRepositoryPGX struct {
@@ -83,15 +84,7 @@ func (r *roleRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*ent
 	}
 	defer rows.Close()
 
-	var roles []*entity.Role
-	for rows.Next() {
-		role, err := scanRole(rows)
-		if err != nil {
-			return nil, err
-		}
-		roles = append(roles, role)
-	}
-	return roles, rows.Err()
+	return scanRoles(rows)
 }
 
 func (r *roleRepositoryPGX) ListByApp(ctx context.Context, appID string) ([]*entity.Role, error) {
@@ -103,29 +96,24 @@ func (r *roleRepositoryPGX) ListByApp(ctx context.Context, appID string) ([]*ent
 	}
 	defer rows.Close()
 
-	var roles []*entity.Role
-	for rows.Next() {
-		role, err := scanRole(rows)
-		if err != nil {
-			return nil, err
-		}
-		roles = append(roles, role)
-	}
-	return roles, rows.Err()
+	return scanRoles(rows)
 }
 
 func scanRole(row pgx.Row) (*entity.Role, error) {
-	var r entity.Role
+	var (
+		role  entity.Role
+		model model.Role
+	)
 
 	err := row.Scan(
-		&r.ID,
-		&r.ApplicationID,
-		&r.Code,
-		&r.Name,
-		&r.Description,
-		&r.CreatedAt,
-		&r.UpdatedAt,
-		&r.DeletedAt,
+		&model.ID,
+		&model.ApplicationID,
+		&model.Code,
+		&model.Name,
+		&model.Description,
+		&model.CreatedAt,
+		&model.UpdatedAt,
+		&model.DeletedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -133,5 +121,29 @@ func scanRole(row pgx.Row) (*entity.Role, error) {
 		}
 		return nil, err
 	}
-	return &r, nil
+
+	role = *model.ToEntity()
+	return &role, nil
+}
+
+func scanRoles(rows pgx.Rows) ([]*entity.Role, error) {
+	var roles []*entity.Role
+
+	for rows.Next() {
+		var model model.Role
+		if err := rows.Scan(
+			&model.ID,
+			&model.ApplicationID,
+			&model.Code,
+			&model.Name,
+			&model.Description,
+			&model.Scope,
+			&model.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		roles = append(roles, model.ToEntity())
+	}
+
+	return roles, rows.Err()
 }

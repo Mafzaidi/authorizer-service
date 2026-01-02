@@ -10,7 +10,7 @@ type User struct {
 	Username      string     `db:"username"`
 	Password      string     `db:"password"`
 	FullName      string     `db:"full_name"`
-	Phone         string     `db:"phone"`
+	Phone         *string    `db:"phone"`
 	IsActive      bool       `db:"is_active"`
 	EmailVerified bool       `db:"email_verified"`
 	PhoneVerified bool       `db:"phone_verified"`

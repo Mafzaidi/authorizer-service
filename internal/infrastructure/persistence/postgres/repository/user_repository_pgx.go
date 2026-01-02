@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
 	"localdev.me/authorizer/internal/domain/repository"
+	"localdev.me/authorizer/internal/infrastructure/persistence/postgres/model"
 )
 
 type userRepositoryPGX struct {
@@ -84,33 +85,28 @@ func (r *userRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*ent
 	}
 	defer rows.Close()
 
-	var users []*entity.User
-	for rows.Next() {
-		user, err := scanUser(rows)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, user)
-	}
-	return users, rows.Err()
+	return scanUsers(rows)
 }
 
 func scanUser(row pgx.Row) (*entity.User, error) {
-	var u entity.User
+	var (
+		user  entity.User
+		model model.User
+	)
 
 	err := row.Scan(
-		&u.ID,
-		&u.Email,
-		&u.Username,
-		&u.Password,
-		&u.FullName,
-		&u.Phone,
-		&u.IsActive,
-		&u.EmailVerified,
-		&u.PhoneVerified,
-		&u.CreatedAt,
-		&u.UpdatedAt,
-		&u.DeletedAt,
+		&model.ID,
+		&model.Email,
+		&model.Username,
+		&model.Password,
+		&model.FullName,
+		&model.Phone,
+		&model.IsActive,
+		&model.EmailVerified,
+		&model.PhoneVerified,
+		&model.CreatedAt,
+		&model.UpdatedAt,
+		&model.DeletedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -118,5 +114,34 @@ func scanUser(row pgx.Row) (*entity.User, error) {
 		}
 		return nil, err
 	}
-	return &u, nil
+
+	user = *model.ToEntity()
+	return &user, nil
+}
+
+func scanUsers(rows pgx.Rows) ([]*entity.User, error) {
+	var users []*entity.User
+
+	for rows.Next() {
+		var model model.User
+		if err := rows.Scan(
+			&model.ID,
+			&model.Email,
+			&model.Username,
+			&model.Password,
+			&model.FullName,
+			&model.Phone,
+			&model.IsActive,
+			&model.EmailVerified,
+			&model.PhoneVerified,
+			&model.CreatedAt,
+			&model.UpdatedAt,
+			&model.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, model.ToEntity())
+	}
+
+	return users, rows.Err()
 }

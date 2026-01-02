@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
 	"localdev.me/authorizer/internal/domain/repository"
+	"localdev.me/authorizer/internal/infrastructure/persistence/postgres/model"
 	"localdev.me/authorizer/pkg/utils"
 )
 
@@ -145,15 +146,7 @@ func (r *permRepositoryPGX) List(ctx context.Context, limit, offset int) ([]*ent
 	}
 	defer rows.Close()
 
-	var perms []*entity.Permission
-	for rows.Next() {
-		perm, err := scanPerm(rows)
-		if err != nil {
-			return nil, err
-		}
-		perms = append(perms, perm)
-	}
-	return perms, rows.Err()
+	return scanPerms(rows)
 }
 
 func (r *permRepositoryPGX) ListByApp(ctx context.Context, appID string) ([]*entity.Permission, error) {
@@ -165,30 +158,25 @@ func (r *permRepositoryPGX) ListByApp(ctx context.Context, appID string) ([]*ent
 	}
 	defer rows.Close()
 
-	var perms []*entity.Permission
-	for rows.Next() {
-		perm, err := scanPerm(rows)
-		if err != nil {
-			return nil, err
-		}
-		perms = append(perms, perm)
-	}
-	return perms, rows.Err()
+	return scanPerms(rows)
 }
 
 func scanPerm(row pgx.Row) (*entity.Permission, error) {
-	var p entity.Permission
+	var (
+		perm  entity.Permission
+		model model.Permission
+	)
 
 	err := row.Scan(
-		&p.ID,
-		&p.ApplicationID,
-		&p.Code,
-		&p.Description,
-		&p.Version,
-		&p.CreatedBy,
-		&p.CreatedAt,
-		&p.UpdatedAt,
-		&p.DeletedAt,
+		&model.ID,
+		&model.ApplicationID,
+		&model.Code,
+		&model.Description,
+		&model.Version,
+		&model.CreatedBy,
+		&model.CreatedAt,
+		&model.UpdatedAt,
+		&model.DeletedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -197,5 +185,30 @@ func scanPerm(row pgx.Row) (*entity.Permission, error) {
 		return nil, err
 	}
 
-	return &p, nil
+	perm = *model.ToEntity()
+	return &perm, nil
+}
+
+func scanPerms(rows pgx.Rows) ([]*entity.Permission, error) {
+	var perms []*entity.Permission
+
+	for rows.Next() {
+		var model model.Permission
+		if err := rows.Scan(
+			&model.ID,
+			&model.ApplicationID,
+			&model.Code,
+			&model.Description,
+			&model.Version,
+			&model.CreatedBy,
+			&model.CreatedAt,
+			&model.UpdatedAt,
+			&model.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		perms = append(perms, model.ToEntity())
+	}
+
+	return perms, rows.Err()
 }

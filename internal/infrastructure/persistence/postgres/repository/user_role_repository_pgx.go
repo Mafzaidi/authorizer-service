@@ -3,11 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"localdev.me/authorizer/internal/domain/entity"
 	"localdev.me/authorizer/internal/domain/repository"
-	"localdev.me/authorizer/internal/infrastructure/persistence/postgres/model"
 )
 
 type userRoleRepositoryPGX struct {
@@ -85,16 +83,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUser(ctx context.Context, userID strin
 	}
 	defer rows.Close()
 
-	var roles []*entity.Role
-	for rows.Next() {
-		var role entity.Role
-		if err := rows.Scan(&role.ID, &role.ApplicationID, &role.Code, &role.Name, &role.Description, &role.DeletedAt); err != nil {
-			return nil, err
-		}
-		roles = append(roles, &role)
-	}
-
-	return roles, nil
+	return scanRoles(rows)
 }
 
 func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(ctx context.Context, userID, appID string) ([]*entity.Role, error) {
@@ -111,23 +100,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(ctx context.Context, userID
 	}
 	defer rows.Close()
 
-	var roles []*entity.Role
-	for rows.Next() {
-		var role entity.Role
-		if err := rows.Scan(
-			&role.ID,
-			&role.ApplicationID,
-			&role.Code,
-			&role.Name,
-			&role.Description,
-			&role.DeletedAt,
-		); err != nil {
-			return nil, err
-		}
-		roles = append(roles, &role)
-	}
-
-	return roles, nil
+	return scanRoles(rows)
 }
 
 func (r *userRoleRepositoryPGX) GetGlobalRolesByUser(ctx context.Context, userID string) ([]*entity.Role, error) {
@@ -172,26 +145,4 @@ func (r *userRoleRepositoryPGX) GetUsersByRole(ctx context.Context, roleID strin
 	}
 
 	return users, nil
-}
-
-func scanRoles(rows pgx.Rows) ([]*entity.Role, error) {
-	var roles []*entity.Role
-
-	for rows.Next() {
-		var row model.Role
-		if err := rows.Scan(
-			&row.ID,
-			&row.ApplicationID,
-			&row.Code,
-			&row.Name,
-			&row.Description,
-			&row.Scope,
-			&row.DeletedAt,
-		); err != nil {
-			return nil, err
-		}
-		roles = append(roles, row.ToEntity())
-	}
-
-	return roles, rows.Err()
 }

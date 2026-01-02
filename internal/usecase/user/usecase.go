@@ -56,7 +56,7 @@ func (uc *userUsecase) Register(ctx context.Context, in *RegisterInput) error {
 		ID:            idgen.NewUUIDv7(),
 		Username:      in.Username,
 		FullName:      in.FullName,
-		Phone:         in.Phone,
+		Phone:         &in.Phone,
 		Password:      hashedPassword,
 		Email:         in.Email,
 		IsActive:      true,
@@ -101,7 +101,7 @@ func (uc *userUsecase) UpdateData(ctx context.Context, userID string, in *Update
 	updatedUser := &entity.User{
 		ID:       existingUser.ID,
 		FullName: in.FullName,
-		Phone:    in.Phone,
+		Phone:    &in.Phone,
 	}
 
 	return uc.repo.Update(ctx, updatedUser)
