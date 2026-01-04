@@ -1,3 +1,9 @@
+## 0.15.3 (2026-01-05)
+
+### Fix
+
+- fix authorization login role and permission
+
 ## 0.15.2 (2026-01-03)
 
 ### Fix
