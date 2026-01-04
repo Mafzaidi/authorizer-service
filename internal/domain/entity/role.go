@@ -8,7 +8,7 @@ type Role struct {
 	Code          string     `db:"code"`
 	Name          string     `db:"role"`
 	Description   *string    `db:"description"`
-	Scope         string     `db:"scope"`
+	Scope         *string    `db:"scope"`
 	CreatedAt     time.Time  `db:"created_at"`
 	UpdatedAt     time.Time  `db:"updated_at"`
 	DeletedAt     *time.Time `db:"deleted_at"`

@@ -88,7 +88,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUser(ctx context.Context, userID strin
 
 func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(ctx context.Context, userID, appID string) ([]*entity.Role, error) {
 	query := `
-		SELECT r.id, r.application_id, r.code, r.name, r.description, r.deleted_at
+		SELECT r.*
 		FROM authorizer_service.roles r
 		INNER JOIN authorizer_service.user_roles ur ON ur.role_id = r.id
 		WHERE ur.user_id = $1 AND r.application_id = $2 AND r.deleted_at IS NULL;

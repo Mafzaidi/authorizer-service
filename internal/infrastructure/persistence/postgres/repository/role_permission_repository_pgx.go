@@ -72,10 +72,10 @@ func (r *rolePermRepositoryPGX) Replace(ctx context.Context, roleID string, perm
 
 func (r *rolePermRepositoryPGX) GetPermsByRole(ctx context.Context, roleID string) ([]*entity.Permission, error) {
 	query := `
-		SELECT p.id, p.code, p.description, p.deleted_at
+		SELECT p.*
 		FROM authorizer_service.permissions p
 		INNER JOIN authorizer_service.role_permissions rp ON rp.permission_id = p.id
-		WHERE rp.role_id = $1 AND r.deleted_at IS NULL;
+		WHERE rp.role_id = $1 AND p.deleted_at IS NULL;
 	`
 
 	rows, err := r.pool.Query(ctx, query, roleID)
@@ -89,7 +89,7 @@ func (r *rolePermRepositoryPGX) GetPermsByRole(ctx context.Context, roleID strin
 
 func (r *rolePermRepositoryPGX) GetPermsByRoles(ctx context.Context, roleIDs []string) ([]*entity.Permission, error) {
 	query := `
-		SELECT p.id, p.code, p.description, p.deleted_at
+		SELECT p.*
 		FROM authorizer_service.permissions p
 		INNER JOIN authorizer_service.role_permissions rp ON rp.permission_id = p.id
 		WHERE rp.role_id = ANY($1) AND p.deleted_at IS NULL;

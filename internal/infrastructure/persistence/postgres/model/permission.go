@@ -13,7 +13,7 @@ type Permission struct {
 	Code          string
 	Description   pgtype.Text
 	Version       int
-	CreatedBy     string
+	CreatedBy     pgtype.Text
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
 	DeletedAt     pgtype.Timestamp
@@ -30,6 +30,11 @@ func (p *Permission) ToEntity() *entity.Permission {
 		desc = &p.Description.String
 	}
 
+	var createdBy *string
+	if p.CreatedBy.Valid {
+		desc = &p.CreatedBy.String
+	}
+
 	var deletedAt *time.Time
 	if p.DeletedAt.Valid {
 		deletedAt = &p.DeletedAt.Time
@@ -41,7 +46,7 @@ func (p *Permission) ToEntity() *entity.Permission {
 		Code:          p.Code,
 		Description:   desc,
 		Version:       p.Version,
-		CreatedBy:     p.CreatedBy,
+		CreatedBy:     createdBy,
 		CreatedAt:     p.CreatedAt.Time,
 		UpdatedAt:     p.UpdatedAt.Time,
 		DeletedAt:     deletedAt,

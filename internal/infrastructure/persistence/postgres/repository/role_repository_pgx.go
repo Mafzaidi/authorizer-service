@@ -111,6 +111,7 @@ func scanRole(row pgx.Row) (*entity.Role, error) {
 		&model.Code,
 		&model.Name,
 		&model.Description,
+		&model.Scope,
 		&model.CreatedAt,
 		&model.UpdatedAt,
 		&model.DeletedAt,
@@ -138,6 +139,8 @@ func scanRoles(rows pgx.Rows) ([]*entity.Role, error) {
 			&model.Name,
 			&model.Description,
 			&model.Scope,
+			&model.CreatedAt,
+			&model.UpdatedAt,
 			&model.DeletedAt,
 		); err != nil {
 			return nil, err

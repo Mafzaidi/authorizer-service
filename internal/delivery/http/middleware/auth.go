@@ -56,6 +56,36 @@ func JWTAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func RequirePermission(app, perm string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+
+			claims := GetUserFromContext(c)
+			if !HasPermission(claims, app, perm) {
+				return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "missing required permission")
+			}
+
+			return next(c)
+		}
+	}
+}
+
+func HasPermission(claims *JWTClaims, app, perm string) bool {
+	for _, a := range claims.Authorization {
+		if a.App == "GLOBAL" {
+			return true
+		}
+		if a.App == app {
+			for _, p := range a.Permissions {
+				if p == perm {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func GetUserFromContext(c echo.Context) *JWTClaims {
 	if claims, ok := c.Get(string(userContextKey)).(*JWTClaims); ok {
 		return claims

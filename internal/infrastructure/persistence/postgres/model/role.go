@@ -13,7 +13,7 @@ type Role struct {
 	Code          string
 	Name          string
 	Description   pgtype.Text
-	Scope         string
+	Scope         pgtype.Text
 	CreatedAt     pgtype.Timestamp
 	DeletedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
@@ -30,6 +30,11 @@ func (r *Role) ToEntity() *entity.Role {
 		desc = &r.Description.String
 	}
 
+	var scope *string
+	if r.Scope.Valid {
+		scope = &r.Scope.String
+	}
+
 	var deletedAt *time.Time
 	if r.DeletedAt.Valid {
 		deletedAt = &r.DeletedAt.Time
@@ -41,7 +46,7 @@ func (r *Role) ToEntity() *entity.Role {
 		Code:          r.Code,
 		Name:          r.Name,
 		Description:   desc,
-		Scope:         r.Scope,
+		Scope:         scope,
 		CreatedAt:     r.CreatedAt.Time,
 		UpdatedAt:     r.UpdatedAt.Time,
 		DeletedAt:     deletedAt,

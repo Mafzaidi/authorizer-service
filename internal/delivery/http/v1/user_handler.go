@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/internal/delivery/http/middleware"
 	"localdev.me/authorizer/internal/usecase/user"
 	"localdev.me/authorizer/pkg/response"
 )
@@ -206,11 +205,11 @@ func (h *UserHandler) AssignUserRoles() echo.HandlerFunc {
 		userID := c.Param("id")
 		appID := c.Param("app_id")
 		req := &AssignUserRoleRequest{}
-		claims := middleware.GetUserFromContext(c)
+		// claims := middleware.GetUserFromContext(c)
 
-		if claims.UserID != userID {
-			return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
-		}
+		// if claims.UserID != userID {
+		// 	return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
+		// }
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
