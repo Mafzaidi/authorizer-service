@@ -1,3 +1,9 @@
+## 0.16.0 (2026-01-28)
+
+### Feat
+
+- update release github action
+
 ## 0.15.4 (2026-01-27)
 
 ### Fix
