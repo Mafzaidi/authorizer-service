@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +16,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
+
+// Default paths for JWT private key (public key is derived from it).
+const defaultPrivateKeyPath = "./private.pem"
 
 type (
 	Config struct {
@@ -103,21 +107,14 @@ func GetConfig() *Config {
 		cfg.Redis.Host = getEnvOrDefault("REDIS_HOST", cfg.Redis.Host)
 		cfg.Redis.Port = getEnvOrDefault("REDIS_PORT", cfg.Redis.Port)
 
-		// Load RSA keys for JWT
-		cfg.JWT.PrivateKeyPath = getEnvOrDefault("JWT_PRIVATE_KEY_PATH", "./private.pem")
-		cfg.JWT.PublicKeyPath = getEnvOrDefault("JWT_PUBLIC_KEY_PATH", "./public.pem")
-
-		privateKey, err := loadPrivateKey(cfg.JWT.PrivateKeyPath)
+		// Load private key only (from env PEM or file). Public key is derived from it
+		// so only one secret (private.pem) is needed; JWKS endpoint serves the public key.
+		privateKey, err := loadPrivateKeyFromEnvOrFile()
 		if err != nil {
 			panic(fmt.Sprintf("Failed to load private key: %v", err))
 		}
 		cfg.JWT.PrivateKey = privateKey
-
-		publicKey, err := loadPublicKey(cfg.JWT.PublicKeyPath)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to load public key: %v", err))
-		}
-		cfg.JWT.PublicKey = publicKey
+		cfg.JWT.PublicKey = &privateKey.PublicKey
 
 		cfg.JWT.KeyID = generateKID(cfg.JWT.PublicKey)
 
@@ -141,56 +138,55 @@ func getEnvOrDefault(envKey, fallback string) string {
 	return fallback
 }
 
-func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
-	keyBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key file: %w", err)
+// loadPrivateKeyFromEnvOrFile loads private key from JWT_PRIVATE_KEY (PEM string) or from file.
+// File paths tried in order: JWT_PRIVATE_KEY_PATH env, default ./private.pem, then /app/secrets/private.pem (K8s mount).
+func loadPrivateKeyFromEnvOrFile() (*rsa.PrivateKey, error) {
+	if pemStr := os.Getenv("JWT_PRIVATE_KEY"); pemStr != "" {
+		return parsePrivateKeyPEM([]byte(pemStr))
 	}
 
+	paths := []string{
+		getEnvOrDefault("JWT_PRIVATE_KEY_PATH", defaultPrivateKeyPath),
+		defaultPrivateKeyPath,
+	}
+	for _, path := range paths {
+		key, err := loadPrivateKey(path)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) || strings.Contains(err.Error(), "no such file") {
+				continue
+			}
+			return nil, err
+		}
+		return key, nil
+	}
+	return nil, fmt.Errorf("private key not found: tried paths %v and JWT_PRIVATE_KEY env", paths)
+}
+
+func parsePrivateKeyPEM(keyBytes []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
 		return nil, fmt.Errorf("failed to decode PEM block")
 	}
-
 	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		// Try PKCS1 format as fallback
 		privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %w", err)
 		}
 	}
-
 	rsaKey, ok := privateKey.(*rsa.PrivateKey)
 	if !ok {
 		return nil, fmt.Errorf("key is not RSA private key")
 	}
-
 	return rsaKey, nil
 }
 
-func loadPublicKey(path string) (*rsa.PublicKey, error) {
+func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
 	keyBytes, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read public key file: %w", err)
+		return nil, fmt.Errorf("failed to read private key file: %w", err)
 	}
-
-	block, _ := pem.Decode(keyBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
-	}
-
-	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-
-	rsaKey, ok := publicKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("key is not RSA public key")
-	}
-
-	return rsaKey, nil
+	return parsePrivateKeyPEM(keyBytes)
 }
 
 func generateKID(pub *rsa.PublicKey) string {
