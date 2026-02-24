@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"localdev.me/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
 )
 
 type UserRoleRepository interface {

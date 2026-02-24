@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	app "localdev.me/authorizer/internal/usecase/application"
-	"localdev.me/authorizer/pkg/response"
+	app "github.com/mafzaidi/authorizer/internal/usecase/application"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type CreateAppRequest struct {

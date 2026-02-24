@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"localdev.me/authorizer/internal/domain/entity"
-	"localdev.me/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
 )
 
 type userRoleRepositoryPGX struct {
@@ -105,7 +105,7 @@ func (r *userRoleRepositoryPGX) GetRolesByUserAndApp(ctx context.Context, userID
 
 func (r *userRoleRepositoryPGX) GetGlobalRolesByUser(ctx context.Context, userID string) ([]*entity.Role, error) {
 	query := `
-		SELECT r.id, r.application_id, r.code, r.name, r.description, r.scope, r.deleted_at
+		SELECT r.*
 		FROM authorizer_service.roles r
 		INNER JOIN authorizer_service.user_roles ur ON ur.role_id = r.id
 		WHERE ur.user_id = $1 AND r.scope ='GLOBAL' AND r.deleted_at IS NULL;

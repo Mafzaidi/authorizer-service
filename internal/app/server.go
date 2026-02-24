@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/config"
-	"localdev.me/authorizer/internal/infrastructure/persistence/postgres"
-	"localdev.me/authorizer/internal/infrastructure/persistence/redis"
+	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/persistence/postgres"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/persistence/redis"
 )
 
 type Server struct {

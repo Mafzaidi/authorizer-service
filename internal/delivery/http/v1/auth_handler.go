@@ -1,14 +1,16 @@
 package v1
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/config"
-	"localdev.me/authorizer/internal/usecase/auth"
-	"localdev.me/authorizer/pkg/response"
+	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/usecase/auth"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type (
@@ -29,6 +31,19 @@ type (
 		RefreshToken string `json:"refresh_token"`
 
 		Authorization []Authorization `json:"authorization"`
+	}
+
+	JWKSResponse struct {
+		Keys []JWK `json:"keys"`
+	}
+
+	JWK struct {
+		Kty string `json:"kty"`
+		Use string `json:"use"`
+		Alg string `json:"alg"`
+		Kid string `json:"kid"`
+		N   string `json:"n"`
+		E   string `json:"e"`
 	}
 
 	Authorization struct {
@@ -128,5 +143,29 @@ func (h *AuthHandler) Logout() echo.HandlerFunc {
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user logged out successfully",
 		})
+	}
+}
+
+func (h *AuthHandler) GetJWKS() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		pub := h.cfg.JWT.PublicKey
+
+		n := base64.RawURLEncoding.EncodeToString(pub.N.Bytes())
+		e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes())
+
+		resp := JWKSResponse{
+			Keys: []JWK{
+				{
+					Kty: "RSA",
+					Use: "sig",
+					Alg: "RS256",
+					Kid: h.cfg.JWT.KeyID,
+					N:   n,
+					E:   e,
+				},
+			},
+		}
+
+		return c.JSON(http.StatusOK, resp)
 	}
 }

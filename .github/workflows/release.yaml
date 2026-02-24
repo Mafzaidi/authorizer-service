@@ -2,13 +2,14 @@ name: Build & Push Docker Image
 
 on:
   push:
-    branches: ["**"]          # semua branch build dev image
+    branches:
+      - dev
     tags:
       - '*.*.*'               # hanya tag semver jadi prod image
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: mafzaidi93/authorizer-service
+  IMAGE_NAME: mafzaidi93/authorizer
 
 jobs:
   docker:
@@ -28,7 +29,7 @@ jobs:
       - name: Build Go binary
         run: |
           mkdir -p bin
-          go build -ldflags "-s -w" -o bin/authorizer-service ./cmd/api
+          go build -ldflags "-s -w" -o bin/authorizer ./cmd/api
 
       - name: Extract Git Info
         id: gitvars

@@ -5,8 +5,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	mid "github.com/labstack/echo/v4/middleware"
-	"localdev.me/authorizer/internal/app/resource"
-	"localdev.me/authorizer/internal/delivery/http/middleware"
+	"github.com/mafzaidi/authorizer/internal/app/resource"
+	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware"
 )
 
 func (s *Server) MapHandlers(e *echo.Echo) error {
@@ -21,7 +21,7 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 	user := resource.NewUser(s.postgreDB.Pool)
 	role := resource.NewRole(s.postgreDB.Pool)
 	app := resource.NewApp(s.postgreDB.Pool)
-	perm := resource.NePerm(s.postgreDB.Pool)
+	perm := resource.NewPerm(s.postgreDB.Pool)
 
 	v1 := e.Group("authorizer/v1")
 	public := v1.Group("")
@@ -53,6 +53,8 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 			"status":  http.StatusOK,
 		})
 	})
+
+	e.GET("/.well-known/jwks.json", auth.Handler.GetJWKS())
 
 	return nil
 }

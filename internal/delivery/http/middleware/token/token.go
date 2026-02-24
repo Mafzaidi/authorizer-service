@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/golang-jwt/jwt/v4"
-	"localdev.me/authorizer/internal/delivery/http/middleware"
+	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware"
 )
 
 type JWTGen struct {

@@ -2,14 +2,14 @@ package resource
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mafzaidi/authorizer/config"
+	authHdl "github.com/mafzaidi/authorizer/internal/delivery/http/v1"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	authRepoPGX "github.com/mafzaidi/authorizer/internal/infrastructure/persistence/postgres/repository"
+	authRepoRedis "github.com/mafzaidi/authorizer/internal/infrastructure/persistence/redis/repository"
+	authSvc "github.com/mafzaidi/authorizer/internal/service"
+	authUC "github.com/mafzaidi/authorizer/internal/usecase/auth"
 	"github.com/redis/go-redis/v9"
-	"localdev.me/authorizer/config"
-	authHdl "localdev.me/authorizer/internal/delivery/http/v1"
-	"localdev.me/authorizer/internal/domain/repository"
-	authRepoPGX "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
-	authRepoRedis "localdev.me/authorizer/internal/infrastructure/persistence/redis/repository"
-	authSvc "localdev.me/authorizer/internal/service"
-	authUC "localdev.me/authorizer/internal/usecase/auth"
 )
 
 type Auth struct {

@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"localdev.me/authorizer/config"
-	"localdev.me/authorizer/internal/app"
-	"localdev.me/authorizer/internal/infrastructure/persistence/postgres"
-	"localdev.me/authorizer/internal/infrastructure/persistence/redis"
+	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/app"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/persistence/postgres"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/persistence/redis"
 )
 
 func main() {

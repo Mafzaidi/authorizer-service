@@ -1,3 +1,20 @@
+## 1.0.0 (2026-02-25)
+
+### Feat
+
+- add kid to claims
+- add jwks secret key
+
+### Fix
+
+- fix jwt private key path
+- set workflow action triggered by dev branch
+
+### Refactor
+
+- change app code for test kid generation
+- refactor repo name to authorizer
+
 ## 0.16.0 (2026-01-28)
 
 ### Feat

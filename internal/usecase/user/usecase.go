@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"localdev.me/authorizer/internal/delivery/http/middleware/pwd"
-	"localdev.me/authorizer/internal/domain/entity"
-	"localdev.me/authorizer/internal/domain/repository"
-	"localdev.me/authorizer/pkg/idgen"
+	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware/pwd"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/pkg/idgen"
 )
 
 type userUsecase struct {
@@ -113,10 +113,6 @@ func (uc *userUsecase) GetList(ctx context.Context, limit, offset int) ([]*entit
 
 	if limit == 0 {
 		limit = 50
-	}
-
-	if offset == 0 {
-		offset = 10
 	}
 
 	users, err := uc.repo.List(ctx, limit, offset)

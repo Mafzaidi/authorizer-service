@@ -6,10 +6,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"localdev.me/authorizer/internal/domain/entity"
-	"localdev.me/authorizer/internal/domain/repository"
-	"localdev.me/authorizer/internal/infrastructure/persistence/postgres/model"
-	"localdev.me/authorizer/pkg/utils"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/persistence/postgres/model"
+	"github.com/mafzaidi/authorizer/pkg/utils"
 )
 
 type permRepositoryPGX struct {

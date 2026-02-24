@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
 	"github.com/redis/go-redis/v9"
-	"localdev.me/authorizer/internal/domain/repository"
 )
 
 type authRepository struct {

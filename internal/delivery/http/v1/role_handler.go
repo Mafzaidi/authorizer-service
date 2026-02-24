@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/internal/usecase/role"
-	"localdev.me/authorizer/pkg/response"
+	"github.com/mafzaidi/authorizer/internal/usecase/role"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type (

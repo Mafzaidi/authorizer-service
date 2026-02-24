@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"localdev.me/authorizer/config"
-	"localdev.me/authorizer/internal/delivery/http/middleware"
-	"localdev.me/authorizer/internal/delivery/http/middleware/pwd"
-	"localdev.me/authorizer/internal/domain/entity"
-	"localdev.me/authorizer/internal/domain/repository"
-	"localdev.me/authorizer/internal/service"
+	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware"
+	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware/pwd"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/internal/service"
 )
 
 type UserToken struct {
@@ -63,7 +63,9 @@ func (uc *authUsecase) Login(
 		user.ID,
 		appCode,
 		validToken,
-		cfg.JWT.Secret,
+		cfg.JWT.PrivateKey,
+		cfg.JWT.PublicKey,
+		cfg.JWT.KeyID,
 	)
 	if err != nil {
 		return nil, errors.New("failed to generate access token")

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/internal/usecase/user"
-	"localdev.me/authorizer/pkg/response"
+	"github.com/mafzaidi/authorizer/internal/usecase/user"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type (
@@ -35,8 +35,8 @@ type (
 	}
 
 	GetUserListQuery struct {
-		Offset int `query:"page"`
-		Limit  int `query:"limit"`
+		Page  int `query:"page"`
+		Limit int `query:"limit"`
 	}
 
 	AssignUserRoleRequest struct {
@@ -187,7 +187,17 @@ func (h *UserHandler) GetUserList() echo.HandlerFunc {
 		// 	return response.ErrorHandler(c, http.StatusForbidden, "Forbidden", "you don't have access to this route")
 		// }
 
-		users, err := h.userUC.GetList(c.Request().Context(), query.Offset, query.Limit)
+		page := query.Page
+		if page <= 0 {
+			page = 1
+		}
+		limit := query.Limit
+		if limit <= 0 {
+			limit = 50 // default limit
+		}
+		offset := (page - 1) * limit
+
+		users, err := h.userUC.GetList(c.Request().Context(), limit, offset)
 		if err != nil {
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}

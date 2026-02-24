@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"localdev.me/authorizer/internal/domain/entity"
-	"localdev.me/authorizer/internal/domain/repository"
-	"localdev.me/authorizer/pkg/idgen"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/pkg/idgen"
 )
 
 type appUsecase struct {

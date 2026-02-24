@@ -7,9 +7,9 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
-	"localdev.me/authorizer/config"
+	"github.com/mafzaidi/authorizer/config"
 
-	"localdev.me/authorizer/pkg/response"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type contextKey string
@@ -34,11 +34,11 @@ func JWTAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		token, err := jwt.ParseWithClaims(rawToken, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, echo.ErrUnauthorized
 			}
 
-			return []byte(cfg.JWT.Secret), nil
+			return cfg.JWT.PublicKey, nil
 		})
 
 		if err != nil || !token.Valid {

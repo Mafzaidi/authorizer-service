@@ -1,4 +1,4 @@
-module localdev.me/authorizer
+module github.com/mafzaidi/authorizer
 
 go 1.23.0
 

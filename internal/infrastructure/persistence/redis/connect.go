@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/mafzaidi/authorizer/config"
 	"github.com/redis/go-redis/v9"
-	"localdev.me/authorizer/config"
 )
 
 type Redis struct {

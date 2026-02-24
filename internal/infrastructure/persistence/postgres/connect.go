@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"localdev.me/authorizer/config"
+	"github.com/mafzaidi/authorizer/config"
 )
 
 type PostgreSQL struct {

@@ -2,10 +2,10 @@ package resource
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
-	appHdl "localdev.me/authorizer/internal/delivery/http/v1"
-	"localdev.me/authorizer/internal/domain/repository"
-	appRepo "localdev.me/authorizer/internal/infrastructure/persistence/postgres/repository"
-	appUC "localdev.me/authorizer/internal/usecase/application"
+	appHdl "github.com/mafzaidi/authorizer/internal/delivery/http/v1"
+	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	appRepo "github.com/mafzaidi/authorizer/internal/infrastructure/persistence/postgres/repository"
+	appUC "github.com/mafzaidi/authorizer/internal/usecase/application"
 )
 
 type App struct {

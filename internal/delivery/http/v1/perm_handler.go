@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	perm "localdev.me/authorizer/internal/usecase/permission"
-	"localdev.me/authorizer/pkg/response"
+	perm "github.com/mafzaidi/authorizer/internal/usecase/permission"
+	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
 type PermissionRequest struct {

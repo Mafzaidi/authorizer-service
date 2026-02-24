@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"localdev.me/authorizer/internal/domain/entity"
+	"github.com/mafzaidi/authorizer/internal/domain/entity"
 )
 
 type Role struct {
