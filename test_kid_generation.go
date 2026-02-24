@@ -20,7 +20,7 @@ func main() {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "authorizer",
 			Subject:   "test-user-123",
-			Audience:  []string{"STACKFORGE-SERVICE"},
+			Audience:  []string{"STACKFORGE"},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
@@ -28,7 +28,7 @@ func main() {
 		Email:    "test@example.com",
 		Authorization: []middleware.Authorization{
 			{
-				App:         "STACKFORGE-SERVICE",
+				App:         "STACKFORGE",
 				Roles:       []string{"user"},
 				Permissions: []string{"todo.read", "todo.write"},
 			},
