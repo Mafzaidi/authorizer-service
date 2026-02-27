@@ -29,3 +29,22 @@ bin/
 build/
 
 *.pem
+
+# Kiro development files
+.kiro/
+
+# Coverage reports
+coverage*.txt
+coverage*.out
+
+# Test results
+test_baseline.txt
+test_results.txt
+test_summary*.txt
+
+# Log files
+*.log
+
+# Compiled binaries
+main
+api
