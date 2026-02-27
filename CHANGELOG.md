@@ -1,3 +1,10 @@
+## 1.1.0 (2026-02-28)
+
+### Refactor
+
+- remove kiro folder
+- refactor project structure for more readable and maintainable
+
 ## 1.0.0 (2026-02-25)
 
 ### Feat
