@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/config"
 	"github.com/redis/go-redis/v9"
 )
 

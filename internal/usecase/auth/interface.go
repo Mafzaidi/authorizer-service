@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 
-	"github.com/mafzaidi/authorizer/config"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/config"
 )
 
 type Usecase interface {

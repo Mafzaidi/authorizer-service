@@ -8,6 +8,7 @@ import (
 
 	"github.com/mafzaidi/authorizer/internal/domain/entity"
 	"github.com/mafzaidi/authorizer/internal/domain/repository"
+	"github.com/mafzaidi/authorizer/internal/domain/service"
 	"github.com/mafzaidi/authorizer/pkg/idgen"
 )
 
@@ -16,6 +17,7 @@ type roleUsecase struct {
 	appRepo      repository.AppRepository
 	permRepo     repository.PermRepository
 	rolePermRepo repository.RolePermRepository
+	logger       service.Logger
 }
 
 func NewRoleUsecase(
@@ -23,12 +25,14 @@ func NewRoleUsecase(
 	appRepo repository.AppRepository,
 	permRepo repository.PermRepository,
 	rolePermRepo repository.RolePermRepository,
+	logger service.Logger,
 ) Usecase {
 	return &roleUsecase{
 		roleRepo:     roleRepo,
 		appRepo:      appRepo,
 		permRepo:     permRepo,
 		rolePermRepo: rolePermRepo,
+		logger:       logger,
 	}
 }
 

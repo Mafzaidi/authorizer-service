@@ -1,4 +1,4 @@
-package v1
+package handler
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/logger"
 	"github.com/mafzaidi/authorizer/internal/usecase/user"
 	"github.com/mafzaidi/authorizer/pkg/response"
 )
@@ -46,11 +47,13 @@ type (
 
 type UserHandler struct {
 	userUC user.Usecase
+	logger *logger.Logger
 }
 
-func NewUserHandler(uc user.Usecase) *UserHandler {
+func NewUserHandler(uc user.Usecase, logger *logger.Logger) *UserHandler {
 	return &UserHandler{
 		userUC: uc,
+		logger: logger,
 	}
 }
 
@@ -59,6 +62,9 @@ func (h *UserHandler) RegisterUser() echo.HandlerFunc {
 		req := &RegisterUserRequest{}
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			h.logger.Warn("Failed to decode register user request", logger.Fields{
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -71,8 +77,17 @@ func (h *UserHandler) RegisterUser() echo.HandlerFunc {
 		}
 
 		if err := h.userUC.Register(c.Request().Context(), in); err != nil {
+			h.logger.Error("Failed to register user", logger.Fields{
+				"email": req.Email,
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
+
+		h.logger.Info("User registered successfully", logger.Fields{
+			"email":    req.Email,
+			"username": req.Username,
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user registered successfully",
@@ -91,6 +106,9 @@ func (h *UserHandler) CreateUser() echo.HandlerFunc {
 		req := &RegisterUserRequest{}
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			h.logger.Warn("Failed to decode create user request", logger.Fields{
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -103,8 +121,17 @@ func (h *UserHandler) CreateUser() echo.HandlerFunc {
 		}
 
 		if err := h.userUC.Register(c.Request().Context(), in); err != nil {
+			h.logger.Error("Failed to create user", logger.Fields{
+				"email": req.Email,
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
+
+		h.logger.Info("User created successfully", logger.Fields{
+			"email":    req.Email,
+			"username": req.Username,
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user registered successfully",
@@ -123,6 +150,10 @@ func (h *UserHandler) GetUserProfile() echo.HandlerFunc {
 
 		user, err := h.userUC.GetDetail(c.Request().Context(), userID)
 		if err != nil {
+			h.logger.Warn("Failed to get user profile", logger.Fields{
+				"user_id": userID,
+				"error":   err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}
 
@@ -135,6 +166,10 @@ func (h *UserHandler) GetUserProfile() echo.HandlerFunc {
 			CreatedAt:   user.CreatedAt,
 			UpdatedAt:   user.UpdatedAt,
 		}
+
+		h.logger.Info("User profile retrieved successfully", logger.Fields{
+			"user_id": userID,
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "get user data successfully",
@@ -155,6 +190,10 @@ func (h *UserHandler) UpdateUserProfile() echo.HandlerFunc {
 		// }
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			h.logger.Warn("Failed to decode update user request", logger.Fields{
+				"user_id": userID,
+				"error":   err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -164,8 +203,16 @@ func (h *UserHandler) UpdateUserProfile() echo.HandlerFunc {
 		}
 
 		if err := h.userUC.UpdateData(c.Request().Context(), userID, in); err != nil {
+			h.logger.Error("Failed to update user profile", logger.Fields{
+				"user_id": userID,
+				"error":   err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
+
+		h.logger.Info("User profile updated successfully", logger.Fields{
+			"user_id": userID,
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user data updated successfully",
@@ -178,6 +225,9 @@ func (h *UserHandler) GetUserList() echo.HandlerFunc {
 		query := GetUserListQuery{}
 
 		if err := c.Bind(&query); err != nil {
+			h.logger.Warn("Failed to bind user list query", logger.Fields{
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -199,8 +249,20 @@ func (h *UserHandler) GetUserList() echo.HandlerFunc {
 
 		users, err := h.userUC.GetList(c.Request().Context(), limit, offset)
 		if err != nil {
+			h.logger.Error("Failed to get user list", logger.Fields{
+				"page":   page,
+				"limit":  limit,
+				"offset": offset,
+				"error":  err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusNotFound, "NotFound", err.Error())
 		}
+
+		h.logger.Info("User list retrieved successfully", logger.Fields{
+			"page":  page,
+			"limit": limit,
+			"count": len(users),
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "OK",
@@ -222,14 +284,31 @@ func (h *UserHandler) AssignUserRoles() echo.HandlerFunc {
 		// }
 
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			h.logger.Warn("Failed to decode assign user roles request", logger.Fields{
+				"user_id": userID,
+				"app_id":  appID,
+				"error":   err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
 		roles := req.Roles
 
 		if err := h.userUC.AssignRoles(c.Request().Context(), userID, appID, roles); err != nil {
+			h.logger.Error("Failed to assign user roles", logger.Fields{
+				"user_id": userID,
+				"app_id":  appID,
+				"roles":   roles,
+				"error":   err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", err.Error())
 		}
+
+		h.logger.Info("User roles assigned successfully", logger.Fields{
+			"user_id": userID,
+			"app_id":  appID,
+			"roles":   roles,
+		})
 
 		return response.SuccesHandler(c, &response.Response{
 			Message: "roles assigned successfully",

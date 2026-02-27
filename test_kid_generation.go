@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/mafzaidi/authorizer/config"
 	"github.com/mafzaidi/authorizer/internal/delivery/http/middleware"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/config"
 )
 
 func main() {

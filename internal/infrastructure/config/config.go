@@ -15,6 +15,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+	"github.com/mafzaidi/authorizer/internal/domain/service"
 )
 
 // Default paths for JWT private key (public key is derived from it).
@@ -27,6 +28,7 @@ type (
 		PostgresDB *PostgresDB
 		Redis      *Redis
 		JWT        *JWT
+		logger     service.Logger
 	}
 
 	App struct {
@@ -71,64 +73,84 @@ var (
 	configInstance *Config
 )
 
+// GetConfig returns the singleton config instance
+// Deprecated: Use Load() instead for better testability
 func GetConfig() *Config {
 	once.Do(func() {
-
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(getEnvOrDefault("CONFIG_PATH", "/app/config"))
-		viper.AutomaticEnv()
-		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-		if err := viper.ReadInConfig(); err != nil {
-			panic("Failed to read config.yaml: " + err.Error())
-		}
-
-		cfg := &Config{
-			Server:     &Server{},
-			App:        &App{},
-			PostgresDB: &PostgresDB{},
-			Redis:      &Redis{},
-			JWT:        &JWT{},
-		}
-
-		if err := viper.Unmarshal(cfg); err != nil {
-			panic("Failed to unmarshal config into struct: " + err.Error())
-		}
-
-		_ = godotenv.Load()
-
-		cfg.PostgresDB.Host = getEnvOrDefault("POSTGRES_DB_HOST", cfg.PostgresDB.Host)
-		cfg.PostgresDB.Port = getEnvOrDefault("POSTGRES_DB_PORT", cfg.PostgresDB.Port)
-		cfg.PostgresDB.User = getEnvOrDefault("POSTGRES_USER", cfg.PostgresDB.User)
-		cfg.PostgresDB.Password = getEnvOrDefault("POSTGRES_PASSWORD", cfg.PostgresDB.Password)
-		cfg.PostgresDB.DBName = getEnvOrDefault("POSTGRES_DB_NAME", cfg.PostgresDB.DBName)
-
-		cfg.Redis.Host = getEnvOrDefault("REDIS_HOST", cfg.Redis.Host)
-		cfg.Redis.Port = getEnvOrDefault("REDIS_PORT", cfg.Redis.Port)
-
-		// Load private key only (from env PEM or file). Public key is derived from it
-		// so only one secret (private.pem) is needed; JWKS endpoint serves the public key.
-		privateKey, err := loadPrivateKeyFromEnvOrFile()
+		cfg, err := Load(nil)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to load private key: %v", err))
+			panic("Failed to load config: " + err.Error())
 		}
-		cfg.JWT.PrivateKey = privateKey
-		cfg.JWT.PublicKey = &privateKey.PublicKey
-
-		cfg.JWT.KeyID = generateKID(cfg.JWT.PublicKey)
-
-		if s := viper.GetString("jwt.tokenExpiry"); s != "" {
-			cfg.JWT.TokenExpiry, _ = time.ParseDuration(s)
-		}
-		if s := viper.GetString("jwt.refreshExpiry"); s != "" {
-			cfg.JWT.RefreshExpiry, _ = time.ParseDuration(s)
-		}
-
 		configInstance = cfg
 	})
 
 	return configInstance
+}
+
+// Load loads configuration from file and environment variables
+// Accepts an optional logger for logging configuration loading events
+func Load(logger service.Logger) (*Config, error) {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(getEnvOrDefault("CONFIG_PATH", "/app/config"))
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read config.yaml: %w", err)
+	}
+
+	cfg := &Config{
+		Server:     &Server{},
+		App:        &App{},
+		PostgresDB: &PostgresDB{},
+		Redis:      &Redis{},
+		JWT:        &JWT{},
+		logger:     logger,
+	}
+
+	if err := viper.Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config into struct: %w", err)
+	}
+
+	_ = godotenv.Load()
+
+	cfg.PostgresDB.Host = getEnvOrDefault("POSTGRES_DB_HOST", cfg.PostgresDB.Host)
+	cfg.PostgresDB.Port = getEnvOrDefault("POSTGRES_DB_PORT", cfg.PostgresDB.Port)
+	cfg.PostgresDB.User = getEnvOrDefault("POSTGRES_USER", cfg.PostgresDB.User)
+	cfg.PostgresDB.Password = getEnvOrDefault("POSTGRES_PASSWORD", cfg.PostgresDB.Password)
+	cfg.PostgresDB.DBName = getEnvOrDefault("POSTGRES_DB_NAME", cfg.PostgresDB.DBName)
+
+	cfg.Redis.Host = getEnvOrDefault("REDIS_HOST", cfg.Redis.Host)
+	cfg.Redis.Port = getEnvOrDefault("REDIS_PORT", cfg.Redis.Port)
+
+	// Load private key only (from env PEM or file). Public key is derived from it
+	// so only one secret (private.pem) is needed; JWKS endpoint serves the public key.
+	privateKey, err := loadPrivateKeyFromEnvOrFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load private key: %w", err)
+	}
+	cfg.JWT.PrivateKey = privateKey
+	cfg.JWT.PublicKey = &privateKey.PublicKey
+
+	cfg.JWT.KeyID = generateKID(cfg.JWT.PublicKey)
+
+	if s := viper.GetString("jwt.tokenExpiry"); s != "" {
+		cfg.JWT.TokenExpiry, _ = time.ParseDuration(s)
+	}
+	if s := viper.GetString("jwt.refreshExpiry"); s != "" {
+		cfg.JWT.RefreshExpiry, _ = time.ParseDuration(s)
+	}
+
+	if logger != nil {
+		logger.Info("Configuration loaded successfully", service.Fields{
+			"server_port": cfg.Server.Port,
+			"db_host":     cfg.PostgresDB.Host,
+			"redis_host":  cfg.Redis.Host,
+		})
+	}
+
+	return cfg, nil
 }
 
 func getEnvOrDefault(envKey, fallback string) string {

@@ -1,15 +1,15 @@
-package v1
+package handler
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"math/big"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/mafzaidi/authorizer/config"
-	"github.com/mafzaidi/authorizer/internal/usecase/auth"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/auth"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/config"
+	"github.com/mafzaidi/authorizer/internal/infrastructure/logger"
+	authUsecase "github.com/mafzaidi/authorizer/internal/usecase/auth"
 	"github.com/mafzaidi/authorizer/pkg/response"
 )
 
@@ -34,16 +34,7 @@ type (
 	}
 
 	JWKSResponse struct {
-		Keys []JWK `json:"keys"`
-	}
-
-	JWK struct {
-		Kty string `json:"kty"`
-		Use string `json:"use"`
-		Alg string `json:"alg"`
-		Kid string `json:"kid"`
-		N   string `json:"n"`
-		E   string `json:"e"`
+		Keys []auth.JWK `json:"keys"`
 	}
 
 	Authorization struct {
@@ -54,14 +45,23 @@ type (
 )
 
 type AuthHandler struct {
-	authUC auth.Usecase
-	cfg    *config.Config
+	authUC      authUsecase.Usecase
+	jwksService auth.JWKSService
+	cfg         *config.Config
+	logger      *logger.Logger
 }
 
-func NewAuthHandler(uc auth.Usecase, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(
+	authUC authUsecase.Usecase,
+	jwksService auth.JWKSService,
+	cfg *config.Config,
+	logger *logger.Logger,
+) *AuthHandler {
 	return &AuthHandler{
-		authUC: uc,
-		cfg:    cfg,
+		authUC:      authUC,
+		jwksService: jwksService,
+		cfg:         cfg,
+		logger:      logger,
 	}
 }
 
@@ -69,6 +69,9 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		req := &LoginRequest{}
 		if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+			h.logger.Warn("Failed to decode login request", logger.Fields{
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -79,6 +82,10 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 
 		data, err := h.authUC.Login(c.Request().Context(), req.Application, req.Email, req.Password, validToken, h.cfg)
 		if err != nil {
+			h.logger.Warn("Login failed", logger.Fields{
+				"email": req.Email,
+				"error": err.Error(),
+			})
 			return response.ErrorHandler(c, http.StatusBadRequest, "BadRequest", err.Error())
 		}
 
@@ -119,6 +126,11 @@ func (h *AuthHandler) Login() echo.HandlerFunc {
 			Authorization: authorizations,
 		}
 
+		h.logger.Info("User logged in successfully", logger.Fields{
+			"email":    req.Email,
+			"username": data.Claims.Username,
+		})
+
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user login successfully",
 			Data:    resp,
@@ -140,6 +152,8 @@ func (h *AuthHandler) Logout() echo.HandlerFunc {
 		}
 		c.SetCookie(expiredCookie)
 
+		h.logger.Info("User logged out successfully", logger.Fields{})
+
 		return response.SuccesHandler(c, &response.Response{
 			Message: "user logged out successfully",
 		})
@@ -148,22 +162,16 @@ func (h *AuthHandler) Logout() echo.HandlerFunc {
 
 func (h *AuthHandler) GetJWKS() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		pub := h.cfg.JWT.PublicKey
-
-		n := base64.RawURLEncoding.EncodeToString(pub.N.Bytes())
-		e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(pub.E)).Bytes())
+		jwksResp, err := h.jwksService.GetJWKS(h.cfg.JWT.PublicKey, h.cfg.JWT.KeyID)
+		if err != nil {
+			h.logger.Error("Failed to generate JWKS", logger.Fields{
+				"error": err.Error(),
+			})
+			return response.ErrorHandler(c, http.StatusInternalServerError, "InternalServerError", "failed to generate JWKS")
+		}
 
 		resp := JWKSResponse{
-			Keys: []JWK{
-				{
-					Kty: "RSA",
-					Use: "sig",
-					Alg: "RS256",
-					Kid: h.cfg.JWT.KeyID,
-					N:   n,
-					E:   e,
-				},
-			},
+			Keys: jwksResp.Keys,
 		}
 
 		return c.JSON(http.StatusOK, resp)
